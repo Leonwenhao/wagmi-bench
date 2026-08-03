@@ -1,0 +1,7 @@
+**
+!Dockerfile
+!.dockerignore
+!__init__.py
+!block_collector.py
+!firewall_runtime.py
+!guard_main.py

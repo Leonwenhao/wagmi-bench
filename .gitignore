@@ -1,0 +1,25 @@
+# Secrets — never commit. (.env.example is the committed-safe template.)
+.env
+*.env.local
+secrets/
+
+# Python
+__pycache__/
+*.pyc
+.venv
+.venv.nosync/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+
+# Market data — never committed (Review Spec DATA-5: fetch, don't redistribute)
+data/raw/
+packs/**/*.jsonl
+packs/**/*.zip
+
+# Run outputs
+bundles/
+reports/
+.DS_Store

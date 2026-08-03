@@ -1,0 +1,17 @@
+{
+  "schema": "agent_manifest/v1",
+  "name": "my-llm-agent",
+  "adapter": "http",
+  "model_id": "example-provider/frontier-model-2026-05",
+  "endpoint_domains": ["api.example-provider.com"],
+  "inference_params": {
+    "temperature": "0.2",
+    "max_tokens": 2048,
+    "top_p": "1.0",
+    "stream": false
+  },
+  "prompt_sha256": "sha256:cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33cc33",
+  "agent_version": "1.4.2",
+  "image_sha256": "sha256:dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44dd44",
+  "declared_by": "leon"
+}

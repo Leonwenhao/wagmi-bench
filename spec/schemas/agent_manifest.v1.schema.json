@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/agent_manifest.v1.schema.json",
+  "title": "agent_manifest/v1",
+  "description": "Attribution record for WHO decided: the agent's identity, adapter, egress allowlist, and frozen inference configuration. Chained via bundle_manifest.agent_manifest_sha256 and the chain genesis. Secret-free BY CONSTRUCTION (SEC-1): no field in this schema can legally hold a credential - endpoint DOMAINS not URLs-with-tokens, prompt HASH not prompt text, scalar-only inference params (decimals as strings; this manifest is hashed, so the no-floats rule applies to it like everything else).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "name", "adapter", "model_id", "endpoint_domains", "inference_params", "prompt_sha256", "agent_version", "image_sha256"],
+  "properties": {
+    "schema": {
+      "const": "agent_manifest/v1",
+      "description": "Schema name and major version of this document."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable agent name chosen by the operator, e.g. 'baseline-flat' or 'my-llm-agent'."
+    },
+    "adapter": {
+      "enum": ["http", "in_process"],
+      "description": "IC-6 transport: HTTP container (V1 canonical) or in-process scripted reference agent. 'mcp' is reserved post-V1."
+    },
+    "model_id": {
+      "type": "string",
+      "description": "Model identifier as invoked/billed (e.g. provider model slug); 'none' for scripted agents. Attribution: who decided."
+    },
+    "endpoint_domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$",
+        "description": "One exact lowercase DNS hostname (>= 2 dot-separated LDH labels, e.g. 'api.example.com'). The pattern forbids ':', '/', '@', '?', '#' and whitespace outright, so a scheme, port, path, query, or userinfo credential (user:pass@host) is schema-INVALID - the SEC-1 'secret-free by construction' claim is enforced by construction, not convention."
+      },
+      "description": "EXHAUSTIVE egress allowlist driving the sandbox lockdown (ISO-2): only these domains are reachable from the agent container; every other attempt is refused AND recorded as an EgressBlocked event. Empty array = fully offline agent. Items are bare hostnames only (pattern-enforced): a URL-with-embedded-token cannot legally appear here."
+    },
+    "inference_params": {
+      "type": "object",
+      "description": "Inference settings verbatim, scalar values only. Decimal-valued params (e.g. temperature) MUST be decimal strings ('0.7'), never JSON numbers with fractional parts - this document is hashed.",
+      "additionalProperties": {
+        "type": ["string", "integer", "boolean"],
+        "description": "Scalar setting value; decimals as strings."
+      }
+    },
+    "prompt_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 of the system/base prompt bytes - configuration commitment without forced disclosure (prompt text itself is user-side and optional). Null when the agent has no prompt (scripted agents)."
+    },
+    "agent_version": {
+      "type": ["string", "null"],
+      "description": "Free-form agent code version string, or null."
+    },
+    "image_sha256": {
+      "type": ["string", "null"],
+      "description": "Pinned Docker image digest of the agent container ('sha256:...'); null for in-process scripted agents. Reproducibility artifact."
+    },
+    "declared_by": {
+      "type": "string",
+      "description": "Optional free-text attribution of who declared this manifest (operator handle). The 'principal' slot of a commerce mandate."
+    },
+    "ext": {
+      "type": "object",
+      "description": "Sanctioned extension point (see VERSIONING.md). Hashed as-is; values are constrained by schema to JCS-safe types with no fractional numbers ($defs/ext_value), and never credentials.",
+      "additionalProperties": {
+        "$ref": "#/$defs/ext_value"
+      }
+    }
+  },
+  "$defs": {
+    "ext_value": {
+      "description": "JCS-safe extension value (DET-2): null, boolean, string, integer within the I-JSON exact range +/-(2^53-1), or arrays/objects of the same, recursively. A JSON number with a fractional part (e.g. 1.5) is schema-INVALID here - ext contents ride into hashed documents as-is, and no fractional number may enter a hashed document. Boundary note: JSON Schema's 'integer' type admits a mathematically-integral literal such as 1.0; the CI instance scan (float-rejecting JSON parse, see VERSIONING.md) closes that remaining lexical gap.",
+      "anyOf": [
+        {"type": "null", "description": "JSON null."},
+        {"type": "boolean", "description": "JSON boolean."},
+        {"type": "string", "description": "JSON string (decimal values ride as strings, e.g. '0.7')."},
+        {"type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991, "description": "Integer within the I-JSON exact range (JCS round-trips it byte-identically)."},
+        {"type": "array", "items": {"$ref": "#/$defs/ext_value"}, "description": "Array of JCS-safe values."},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/ext_value"}, "description": "Object whose values are all JCS-safe."}
+      ]
+    }
+  }
+}

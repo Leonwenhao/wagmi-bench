@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/runner_request.v1.schema.json",
+  "title": "runner_request/v1",
+  "description": "Body of the harness's POST /decide to the agent (IC-6). A versioned wrapper (deviation from the dev-plan's bare '{observation}'): the single retry must carry the validator error WITHOUT perturbing the observation, whose hash must remain the hash of exactly what the agent saw; a wrapper is the only shape that does both. The observation inside attempt 2 is byte-identical to attempt 1; ObservationEmitted is logged once per turn. No auth headers, nothing secret ever transits this interface (local sandboxed network, SEC-1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "attempt", "observation", "retry"],
+  "properties": {
+    "schema": {
+      "const": "runner_request/v1",
+      "description": "Schema name and major version of this document."
+    },
+    "attempt": {
+      "enum": [1, 2],
+      "description": "1 = first ask; 2 = the single retry after a parse/validation failure. Timeouts and transport errors are NEVER retried."
+    },
+    "observation": {
+      "$ref": "https://tradeevolve.dev/spec/schemas/observation.v1.schema.json",
+      "description": "The full IC-2 observation for this turn - exactly the object that was JCS-hashed for ObservationEmitted; byte-identical across both attempts."
+    },
+    "retry": {
+      "anyOf": [
+        {"type": "null", "description": "Null on attempt 1."},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason", "detail", "prior_raw_sha256"],
+          "description": "Populated only on attempt 2: what was wrong with attempt 1, verbatim.",
+          "properties": {
+            "reason": {
+              "type": "string",
+              "description": "The ActionRejected reason code from attempt 1 (e.g. 'float_target', 'invalid_json')."
+            },
+            "detail": {
+              "type": "string",
+              "description": "The exact validator diagnostic from attempt 1, e.g. 'target.BTC is a JSON number with a fractional part; send a decimal STRING with <= 4 fraction digits, e.g. \"1.5\"'. Fed back verbatim so the agent can self-correct in one round trip."
+            },
+            "prior_raw_sha256": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "Content address of the malformed attempt-1 output, for agent-side correlation."
+            }
+          }
+        }
+      ],
+      "description": "Retry feedback channel: null on attempt 1, the attempt-1 validator error on attempt 2."
+    }
+  }
+}

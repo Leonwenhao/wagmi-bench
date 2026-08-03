@@ -1,0 +1,49 @@
+{
+  "schema": "metrics/v1",
+  "run_id": "run_7d3f0a1b2c4d5e6f",
+  "claim_label": "survival-stress",
+  "profiles": {
+    "primary": {
+      "net_return_1e8": -4230000,
+      "max_drawdown_1e8": 14520000,
+      "sortino_1e8": -31000000,
+      "cvar5_1e8": -5120000,
+      "funding_paid_micro": -184300000,
+      "fees_paid_micro": -96240000,
+      "fill_cost_micro": -41200000,
+      "turnover_1e8": 1240000000,
+      "dist_to_liq_min_1e8": 6120000,
+      "dist_to_liq_p05_1e8": 9800000,
+      "dist_to_liq_p25_1e8": 15200000,
+      "dist_to_liq_median_1e8": 22400000,
+      "equity_curve_ref": "ledger.jsonl"
+    },
+    "stress_2x": {
+      "net_return_1e8": -6890000,
+      "max_drawdown_1e8": 16110000,
+      "sortino_1e8": -38000000,
+      "cvar5_1e8": -5480000,
+      "funding_paid_micro": -184300000,
+      "fees_paid_micro": -192480000,
+      "fill_cost_micro": -82400000,
+      "turnover_1e8": 1240000000,
+      "dist_to_liq_min_1e8": 5890000,
+      "dist_to_liq_p05_1e8": 9420000,
+      "dist_to_liq_p25_1e8": 14780000,
+      "dist_to_liq_median_1e8": 21900000,
+      "equity_curve_ref": "ledger_stress_2x.jsonl"
+    }
+  },
+  "profile_invariant": {
+    "bars": 480,
+    "turns": 480,
+    "invalid_actions": 3,
+    "missed_decisions": 1,
+    "gate_blocks": 2,
+    "post_kill_switch_attempts": 0,
+    "egress_blocked_count": 0,
+    "liquidated": false,
+    "kill_switch_fired": false,
+    "survival_verdict": "survived"
+  }
+}

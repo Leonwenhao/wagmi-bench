@@ -1,0 +1,26 @@
+{
+  "ts": 1581537600000,
+  "bar_index": 6,
+  "turn": 5,
+  "profile": "primary",
+  "nav_micro": 10101526595,
+  "cash_micro": 7170926595,
+  "realized_pnl_micro": 101526595,
+  "d_nav_micro": 30526595,
+  "d_price_pnl_micro": 35500000,
+  "d_funding_micro": -3243525,
+  "d_fees_micro": -1729880,
+  "d_liq_penalty_micro": 0,
+  "positions": {
+    "BTC": {
+      "qty_base_1e8": -100000000,
+      "entry_px_ticks": 86847,
+      "mark_px_ticks": 86490,
+      "upnl_micro": 35700000,
+      "margin_micro": 2894900000,
+      "maintenance_margin_micro": 1441560000,
+      "liq_px_ticks": 100240,
+      "dist_to_liq_1e8": 15898230
+    }
+  }
+}

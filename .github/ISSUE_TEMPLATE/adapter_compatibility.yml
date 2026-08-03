@@ -1,0 +1,56 @@
+name: Agent adapter compatibility
+description: Report an IC-6 transport, schema, retry, timeout, or cost-gate issue.
+title: "[Adapter]: "
+labels:
+  - adapter
+body:
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or version
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Failing phase
+      options:
+        - health check
+        - request parsing
+        - action validation
+        - retry
+        - timeout/crash handling
+        - egress policy
+        - cost estimate/confirmation
+        - bundle recording
+    validations:
+      required: true
+  - type: textarea
+    id: synthetic_exchange
+    attributes:
+      label: Minimal secret-free request and response
+      description: Remove prompts, credentials, provider identifiers, and private model text.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed event sequence and error
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform and container runtime
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: No credential, prompt, raw market data, or private evidence is included.
+          required: true
+        - label: Any paid/provider call used explicit operator confirmation.
+          required: true

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/redaction.v1.schema.json",
+  "title": "redaction/v1",
+  "description": "Manifest of removals in a share-profile sub-bundle; present ONLY in share exports (SCH-4). Because verbatim model text lives in content-addressed raw/ blobs referenced BY HASH from chained records, redaction = delete blob files + write this manifest: every chained record hash, every link, and the root remain valid, and the verifier reports 'N referenced blobs absent - all listed in redaction.json' as PASS-with-disclosure (verifiable absence). A missing blob NOT listed here = CORRUPT. Only raw/ files are redactable in V1; verdicts, fills, ledgers, and observations can never be silently dropped. Secrets are never present by construction (SEC-1), so redaction exists only for raw model text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "profile", "parent_root", "removals"],
+  "properties": {
+    "schema": {
+      "const": "redaction/v1",
+      "description": "Schema name and major version of this document."
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run_[0-9a-f]{16}$",
+      "description": "Run this sub-bundle derives from."
+    },
+    "profile": {
+      "const": "share",
+      "description": "The only defined redaction profile in V1: opt-in removal of raw model text."
+    },
+    "parent_root": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "chain.root of the unredacted parent bundle - a share bundle always names its parent."
+    },
+    "removals": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Every removed file, with its original content address and reason.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "bytes", "reason"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^raw/[0-9]{4}-a[12]\\.txt$",
+            "description": "Bundle-relative path of the removed file. V1 grammar restricts removals to the raw/ store."
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "description": "Original content hash of the removed bytes; must equal the AgentResponded.raw_sha256 commitment in the chained event."
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Original byte length of the removed file."
+          },
+          "reason": {
+            "const": "raw_model_text",
+            "description": "Why removed. Single-member V1 enum: user opted out of sharing verbatim model output."
+          }
+        }
+      }
+    }
+  }
+}

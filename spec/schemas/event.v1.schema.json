@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/event.v1.schema.json",
+  "title": "event/v1",
+  "description": "One line of events.jsonl (IC-4): the ordered, append-only, canonical PRIMARY record of a run. Decision records are a materialized view over this stream; on any conflict, events win. Each line is JCS-canonical, individually hashed, and chained (see chain/v1). Timestamps here are REAL UTC epoch-ms: bundles are trusted-side evidence and are not anonymized - only observations are. The payload is a typed union discriminated on `type` (closed enum per major version).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "seq", "ts", "turn", "bar_index", "source", "type", "payload"],
+  "properties": {
+    "schema": {
+      "const": "event/v1",
+      "description": "Schema name and major version; present per-line because event lines are individually hashed/chained and may be extracted standalone."
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic, contiguous, 0-based stream sequence number assigned by the recorder. THE total order; the chain and all tamper-naming key off seq. Gaps or duplicates = verification failure."
+    },
+    "ts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Virtual-clock time of the event, REAL UTC epoch-milliseconds. For harness-sourced events (EgressBlocked), the harness's copy of the virtual clock at receipt."
+    },
+    "turn": {
+      "type": ["integer", "null"],
+      "description": "Decision turn this event belongs to (turn n owns: its observation, responses, gates, next-bar-open fills, and the funding/margin flows of the holding bar), or null for run-scoped events (e.g. EpisodeEnd)."
+    },
+    "bar_index": {
+      "type": ["integer", "null"],
+      "description": "Decision-bar index at emission, or null for pre/post-episode events."
+    },
+    "source": {
+      "enum": ["engine", "harness", "recorder"],
+      "description": "Emitting authority - an auditor must know whether the engine or the sandbox proxy witnessed the fact. Multi-party provenance is first-class (a future settlement processor is a new enum member, minor bump)."
+    },
+    "type": {
+      "enum": ["ObservationEmitted", "AgentResponded", "ActionParsed", "ActionRejected", "RiskCheck", "OrderFilled", "OrderCancelled", "FundingApplied", "MarginUpdate", "NearLiquidation", "LiquidationTriggered", "KillSwitchTriggered", "PostKillSwitchAttempt", "EgressBlocked", "EpisodeEnd"],
+      "description": "Event type; closed V1 vocabulary (dev-plan names kept verbatim, including NearLiquidation added at the C0.3 reconciliation). New members are a minor bump; readers reject unknown types under the same major only if strict-mode, else ignore-with-warning."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Type-specific body; validated by the oneOf discriminated union below."
+    },
+    "ext": {
+      "type": "object",
+      "description": "Sanctioned extension point (see VERSIONING.md). Engine-ignored, hashed as-is; values are constrained by schema to JCS-safe types with no fractional numbers ($defs/ext_value).",
+      "additionalProperties": {
+        "$ref": "#/$defs/ext_value"
+      }
+    }
+  },
+  "oneOf": [
+    {"properties": {"type": {"const": "ObservationEmitted"}, "payload": {"$ref": "#/$defs/ObservationEmitted"}}},
+    {"properties": {"type": {"const": "AgentResponded"}, "payload": {"$ref": "#/$defs/AgentResponded"}}},
+    {"properties": {"type": {"const": "ActionParsed"}, "payload": {"$ref": "#/$defs/ActionParsed"}}},
+    {"properties": {"type": {"const": "ActionRejected"}, "payload": {"$ref": "#/$defs/ActionRejected"}}},
+    {"properties": {"type": {"const": "RiskCheck"}, "payload": {"$ref": "#/$defs/RiskCheck"}}},
+    {"properties": {"type": {"const": "OrderFilled"}, "payload": {"$ref": "#/$defs/OrderFilled"}}},
+    {"properties": {"type": {"const": "OrderCancelled"}, "payload": {"$ref": "#/$defs/OrderCancelled"}}},
+    {"properties": {"type": {"const": "FundingApplied"}, "payload": {"$ref": "#/$defs/FundingApplied"}}},
+    {"properties": {"type": {"const": "MarginUpdate"}, "payload": {"$ref": "#/$defs/MarginUpdate"}}},
+    {"properties": {"type": {"const": "NearLiquidation"}, "payload": {"$ref": "#/$defs/NearLiquidation"}}},
+    {"properties": {"type": {"const": "LiquidationTriggered"}, "payload": {"$ref": "#/$defs/LiquidationTriggered"}}},
+    {"properties": {"type": {"const": "KillSwitchTriggered"}, "payload": {"$ref": "#/$defs/KillSwitchTriggered"}}},
+    {"properties": {"type": {"const": "PostKillSwitchAttempt"}, "payload": {"$ref": "#/$defs/PostKillSwitchAttempt"}}},
+    {"properties": {"type": {"const": "EgressBlocked"}, "payload": {"$ref": "#/$defs/EgressBlocked"}}},
+    {"properties": {"type": {"const": "EpisodeEnd"}, "payload": {"$ref": "#/$defs/EpisodeEnd"}}}
+  ],
+  "$defs": {
+    "ext_value": {
+      "description": "JCS-safe extension value (DET-2): null, boolean, string, integer within the I-JSON exact range +/-(2^53-1), or arrays/objects of the same, recursively. A JSON number with a fractional part (e.g. 1.5) is schema-INVALID here - ext contents ride into hashed documents as-is, and no fractional number may enter a hashed document. Boundary note: JSON Schema's 'integer' type admits a mathematically-integral literal such as 1.0; the CI instance scan (float-rejecting JSON parse, see VERSIONING.md) closes that remaining lexical gap.",
+      "anyOf": [
+        {"type": "null", "description": "JSON null."},
+        {"type": "boolean", "description": "JSON boolean."},
+        {"type": "string", "description": "JSON string (decimal values ride as strings, e.g. '0.7')."},
+        {"type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991, "description": "Integer within the I-JSON exact range (JCS round-trips it byte-identically)."},
+        {"type": "array", "items": {"$ref": "#/$defs/ext_value"}, "description": "Array of JCS-safe values."},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/ext_value"}, "description": "Object whose values are all JCS-safe."}
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Algorithm-prefixed lowercase-hex SHA-256 string."
+    },
+    "target_lev_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"pattern": "^[A-Z0-9]{1,12}$"},
+      "additionalProperties": {
+        "type": "integer",
+        "description": "Signed target leverage in 1e-4 units (15000 = 1.5x long, -15000 = 1.5x short, 0 = flat)."
+      },
+      "description": "Canonical parsed target vector: market alias -> integer leverage in 1e-4 units. The only action representation that is ever hashed."
+    },
+    "ObservationEmitted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observation_sha256", "observation_ref"],
+      "description": "Turn start: binds the stored observation into the chain (WHAT THE AGENT SAW). Emitted once per turn even when a retry re-sends the identical observation.",
+      "properties": {
+        "observation_sha256": {"$ref": "#/$defs/sha256", "description": "SHA-256 of the JCS bytes of the observation served this turn (equals the hash of observations/NNNN.json)."},
+        "observation_ref": {"type": "string", "description": "Bundle-relative path of the stored observation, e.g. 'observations/0007.json'."}
+      }
+    },
+    "AgentResponded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "raw_ref", "raw_sha256", "raw_bytes", "latency_ms", "http_status", "token_usage", "transport"],
+      "description": "Each response received, including malformed ones (WHAT THE AGENT SAID). Raw text is content-addressed into raw/ rather than inlined, so share-profile redaction can delete the blob without breaking any chained record hash (SCH-3 x SCH-4).",
+      "properties": {
+        "attempt": {"enum": [1, 2], "description": "1 = first ask; 2 = the single retry after a validation failure."},
+        "raw_ref": {"type": "string", "description": "Bundle-relative path of the verbatim response bytes, e.g. 'raw/0007-a1.txt'."},
+        "raw_sha256": {"$ref": "#/$defs/sha256", "description": "SHA-256 of the verbatim response bytes; survives redaction (verifiable absence)."},
+        "raw_bytes": {"type": "integer", "minimum": 0, "description": "Byte length of the verbatim response."},
+        "latency_ms": {"type": "integer", "minimum": 0, "description": "Harness-measured wall latency, request-sent to last-byte-received. Recorded, never consumed by any economic computation (outside the determinism domain)."},
+        "http_status": {"type": ["integer", "null"], "description": "HTTP status code of the response; null for in-process adapters."},
+        "token_usage": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["input_tokens", "output_tokens"],
+          "description": "Agent-self-reported token usage copied from action.usage; null when unavailable (explicit null, never absent).",
+          "properties": {
+            "input_tokens": {"type": "integer", "minimum": 0, "description": "Reported input/prompt tokens."},
+            "output_tokens": {"type": "integer", "minimum": 0, "description": "Reported output/completion tokens."}
+          }
+        },
+        "transport": {"enum": ["http", "in_process"], "description": "Adapter that carried this response."}
+      }
+    },
+    "ActionParsed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intent_kind", "from_attempt"],
+      "allOf": [
+        {
+          "if": {"properties": {"intent_kind": {"const": "leverage_target"}}},
+          "then": {"required": ["target_lev_1e4", "max_slippage_bps"]}
+        }
+      ],
+      "description": "Parse success (WHAT THE AGENT MEANT): the canonical integer form of the wire action. Free-text comment and usage telemetry are NOT copied here - they live in the content-addressed raw response. The leverage payload (target_lev_1e4, max_slippage_bps) is conditionally required behind intent_kind via the allOf/if/then above - the same seam as the wire form (action.v1). Because intent_kind is itself required here and its sole v1 member is 'leverage_target', every v1 canonical action still carries the full leverage vector (no behavior or byte change for trading); a future intent kind (e.g. commerce purchase_intent) adds its own enum member + conditional branch + optional payload properties - a MINOR bump on this hashed form, not an event/v2 major.",
+      "properties": {
+        "intent_kind": {
+          "enum": ["leverage_target"],
+          "description": "Canonical intent discriminator (the IC-3 seam): constant 'leverage_target' for every v1 trading action (wire absence canonicalizes to it), so it never varies within v1 and determinism is unaffected. On the additive-tolerant list (VERSIONING.md): a future intent kind (commerce purchase_intent) is a new enum member whose payload branch carries its own canonical fields - a MINOR bump instead of an action/v2 + event/v2 + chain-rippling major."
+        },
+        "target_lev_1e4": {"$ref": "#/$defs/target_lev_map", "description": "Canonical signed target-leverage vector (see $defs/target_lev_map); conditionally required behind intent_kind = leverage_target (always present in v1)."},
+        "max_slippage_bps": {"type": ["integer", "null"], "minimum": 0, "maximum": 10000, "description": "Slippage tolerance in integer bps; null when the agent omitted it (wire absence canonicalizes to null)."},
+        "from_attempt": {"enum": [1, 2], "description": "Which IC-6 attempt produced the accepted action."}
+      }
+    },
+    "ActionRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "detail", "validator_error", "attempts"],
+      "description": "No valid action this turn after all attempts: parse/transport failure or timeout. Position unchanged - a rejection is data, not a crash (SAFE-2). Gate blocks are NOT rejections; they are RiskCheck{block} on a successfully parsed action.",
+      "properties": {
+        "reason": {
+          "enum": ["oversize", "invalid_json", "schema_invalid", "unknown_schema", "unknown_field", "unknown_market", "invalid_target_format", "float_target", "target_out_of_range", "invalid_slippage", "timeout", "agent_error"],
+          "description": "Final failure reason (of the last attempt), from the IC-3 validation table. timeout = no bytes within the deadline; agent_error = transport failure/crash/5xx. Both are missed decisions (SAFE-4)."
+        },
+        "detail": {"type": "string", "description": "Deterministic human-readable diagnostic template instantiated with the offending values."},
+        "validator_error": {"type": ["string", "null"], "description": "The exact validator error text fed back to the agent on the retry (attempt 2), or null if no retry occurred - the audit answer to 'was it warned?'."},
+        "attempts": {"enum": [1, 2], "description": "How many attempts were made (timeout/agent_error are never retried, so those record 1)."}
+      }
+    },
+    "RiskCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["constraint_id", "constraint_type", "scope", "observed", "limit", "unit", "verdict"],
+      "description": "One conformance verdict for one constraint (WHICH RULES RAN). Emitted for EVERY active constraint whenever an action is parsed - pass AND block both recorded (SAFE-1 attempted-vs-executed). Any block => the whole action is blocked, position unchanged, never clamped.",
+      "properties": {
+        "constraint_id": {"type": "string", "description": "Constraint row evaluated (matches observation.risk.constraints[].constraint_id)."},
+        "constraint_type": {"enum": ["leverage_cap_gross", "leverage_cap_market", "turnover_cap", "drawdown_kill_switch"], "description": "Constraint semantics (closed V1 enum, minor-bump extensible)."},
+        "scope": {"type": "string", "description": "Market alias bound, or 'account'."},
+        "observed": {"type": "integer", "description": "The value checked (e.g. requested gross leverage, projected turnover), in `unit` units."},
+        "limit": {"type": "integer", "description": "The limit in force, in `unit` units."},
+        "unit": {"type": "string", "description": "Unit of observed/limit: 'lev_1e4', '1e8', or 'micro'."},
+        "verdict": {"enum": ["pass", "block"], "description": "The conformance verdict. This enum is on the additive-tolerant list (VERSIONING.md): a future third outcome (e.g. step_up / requires_user_authorization for commerce mandate flows) arrives as a minor bump, not a major. observed/limit are deliberately numeric-only in v1; a non-scalar conformance value (e.g. an observed merchant vs an allowed set) arrives as an optional additive payload field (minor bump) - documented seam, IC-4 design decision 9."}
+      }
+    },
+    "OrderFilled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["market", "side", "requested_qty_base_1e8", "qty_base_1e8", "ref_open_px_ticks", "half_spread_ticks", "impact_ticks", "fill_px_ticks", "notional_micro", "fee_micro", "slippage_1e8", "cost_profile"],
+      "description": "Next-bar-open execution (WHAT HAPPENED), with the fill price fully decomposed so 'why this price' is answerable without the engine. The stress_2x economic path is a stored re-simulation (ledger_stress_2x.jsonl), not a second event stream.",
+      "properties": {
+        "market": {"type": "string", "description": "Market alias (resolve to venue instrument via the pack manifest)."},
+        "side": {"enum": ["buy", "sell"], "description": "Fill side."},
+        "requested_qty_base_1e8": {"type": "integer", "minimum": 0, "description": "Quantity requested by the target-delta, 1e-8 base units, before caps/rounding."},
+        "qty_base_1e8": {"type": "integer", "minimum": 0, "description": "Quantity actually filled, 1e-8 base units (rounded toward zero to qty_step; capped by participation)."},
+        "ref_open_px_ticks": {"type": "integer", "minimum": 0, "description": "Reference price: the next bar's trade-series open, ticks."},
+        "half_spread_ticks": {"type": "integer", "minimum": 0, "description": "Worst-side half-spread applied, in ticks (agent-adverse rounding)."},
+        "impact_ticks": {"type": "integer", "minimum": 0, "description": "Impact term applied, in ticks (agent-adverse rounding)."},
+        "fill_px_ticks": {"type": "integer", "minimum": 0, "description": "Effective fill price = ref_open +/- (half_spread + impact) against the taker, ticks."},
+        "notional_micro": {"type": "integer", "minimum": 0, "description": "Fill notional = qty x fill price, micro-quote."},
+        "fee_micro": {"type": "integer", "minimum": 0, "description": "Taker fee charged, micro-quote, rounded up (agent-adverse)."},
+        "slippage_1e8": {"type": "integer", "description": "(fill_px - ref_open)/ref_open signed, in 1e-8 units (1 bp = 10000; bps derivable exactly). Compared against the agent's max_slippage_bps x 10000."},
+        "cost_profile": {"const": "primary", "description": "Cost profile of this event stream. Always 'primary'; the stress profile is a stored ledger re-simulation (MATH-5)."}
+      }
+    },
+    "OrderCancelled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["market", "reason", "requested_qty_base_1e8", "cancelled_qty_base_1e8", "detail"],
+      "description": "Whole or partial cancellation. A participation-cap partial produces one OrderFilled (filled part) AND one OrderCancelled (excess) in the same turn; excess is never filled later (MATH-7).",
+      "properties": {
+        "market": {"type": "string", "description": "Market alias."},
+        "reason": {
+          "enum": ["participation_cap", "min_notional", "max_slippage_exceeded", "qty_rounding"],
+          "description": "Why: exceeded participation cap; below min notional; modeled slippage above the agent's max_slippage_bps; or quantity rounded to zero at qty_step."
+        },
+        "requested_qty_base_1e8": {"type": "integer", "minimum": 0, "description": "Quantity requested, 1e-8 base units."},
+        "cancelled_qty_base_1e8": {"type": "integer", "minimum": 0, "description": "Quantity cancelled (the whole request, or the excess over the cap), 1e-8 base units."},
+        "detail": {"type": "string", "description": "Deterministic structured diagnostic (e.g. cap value, bar volume, computed slippage) rendered from a fixed template."}
+      }
+    },
+    "FundingApplied": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["market", "settlement_ts", "rate_1e8", "index_px_ticks", "position_qty_base_1e8", "amount_micro"],
+      "description": "One venue settlement stamp crossed while holding (COST TO HOLD). Notional = position x INDEX price x rate - index, never mark or trade (MATH-4); the three-series separation is visible in the record itself.",
+      "properties": {
+        "market": {"type": "string", "description": "Market alias."},
+        "settlement_ts": {"type": "integer", "minimum": 0, "description": "Settlement instant, REAL UTC epoch-ms."},
+        "rate_1e8": {"type": "integer", "description": "Settled rate in 1e-8 units, era cap applied; positive = longs pay."},
+        "index_px_ticks": {"type": "integer", "minimum": 0, "description": "Index price at settlement, ticks."},
+        "position_qty_base_1e8": {"type": "integer", "description": "Signed position held through the settlement, 1e-8 base units."},
+        "amount_micro": {"type": "integer", "description": "Signed funding flow, micro-quote; negative = agent paid (agent-adverse rounding on the division)."}
+      }
+    },
+    "MarginUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["market", "mark_px_ticks", "mark_high_ticks", "mark_low_ticks", "position_qty_base_1e8", "entry_px_ticks", "margin_micro", "maintenance_margin_micro", "upnl_micro", "liq_px_ticks", "dist_to_liq_1e8", "min_intrabar_dist_to_liq_1e8"],
+      "description": "Margin state per market: emitted at every bar close while a position is open, and after every fill, funding application, and liquidation. Fully specifies the dev-plan's '{...}' placeholder. min_intrabar_dist_to_liq records the closest approach on the wick - near-death evidence even when the close was safe.",
+      "properties": {
+        "market": {"type": "string", "description": "Market alias."},
+        "mark_px_ticks": {"type": "integer", "minimum": 0, "description": "Mark-price close of the bar, ticks (margin/uPnL/liquidation all price off mark)."},
+        "mark_high_ticks": {"type": "integer", "minimum": 0, "description": "Mark-series intra-bar high, ticks (short-side liquidation check input, MATH-3)."},
+        "mark_low_ticks": {"type": "integer", "minimum": 0, "description": "Mark-series intra-bar low, ticks (long-side liquidation check input, MATH-3)."},
+        "position_qty_base_1e8": {"type": "integer", "description": "Signed position size, 1e-8 base units."},
+        "entry_px_ticks": {"type": ["integer", "null"], "description": "Volume-weighted entry price, ticks; null when flat."},
+        "margin_micro": {"type": "integer", "minimum": 0, "description": "Isolated margin allocated, micro-quote."},
+        "maintenance_margin_micro": {"type": "integer", "minimum": 0, "description": "Maintenance margin required at current notional and tier, micro-quote."},
+        "upnl_micro": {"type": "integer", "description": "Unrealized PnL at mark, micro-quote."},
+        "liq_px_ticks": {"type": ["integer", "null"], "description": "Liquidation trigger price, ticks; null when flat."},
+        "dist_to_liq_1e8": {"type": ["integer", "null"], "description": "|mark_close - liq_px|/mark_close in 1e-8 units (floor); null when flat."},
+        "min_intrabar_dist_to_liq_1e8": {"type": ["integer", "null"], "description": "Minimum distance-to-liquidation reached on the bar's mark wick, 1e-8 units; null when flat. The near-miss number."}
+      }
+    },
+    "NearLiquidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["market", "trigger", "mark_extreme_px_ticks", "liq_px_ticks", "min_intrabar_dist_to_liq_1e8", "threshold_1e8"],
+      "description": "The holding bar's adverse mark extreme came within the near-liquidation threshold (5% in V1) of the liquidation price WITHOUT crossing it (a cross emits LiquidationTriggered instead). Feeds the near-death timeline (C5.1); added to IC-4 at the C0.3 reconciliation.",
+      "properties": {
+        "market": {"type": "string", "description": "Market alias."},
+        "trigger": {"enum": ["mark_high", "mark_low"], "description": "Which mark extreme approached: high threatens shorts, low threatens longs."},
+        "mark_extreme_px_ticks": {"type": "integer", "minimum": 0, "description": "The adverse mark extreme of the bar (low for longs, high for shorts), ticks."},
+        "liq_px_ticks": {"type": "integer", "minimum": 0, "description": "The liquidation trigger price that was approached, ticks."},
+        "min_intrabar_dist_to_liq_1e8": {"type": "integer", "minimum": 0, "description": "Closest approach: |extreme - liq_px| / extreme as a 1e-8 fraction (floor). Below threshold_1e8 by construction of this event."},
+        "threshold_1e8": {"type": "integer", "minimum": 1, "description": "Near-liquidation threshold in 1e-8 units (V1: 5000000 = 5%)."}
+      }
+    },
+    "LiquidationTriggered": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["market", "trigger", "trigger_px_ticks", "liq_px_ticks", "close_px_ticks", "position_qty_base_1e8", "penalty_micro", "loss_micro"],
+      "description": "Intra-bar mark high/low breached the liquidation price (including gap-through). Terminal: the episode ends after bookkeeping (MATH-3).",
+      "properties": {
+        "market": {"type": "string", "description": "Market alias."},
+        "trigger": {"enum": ["mark_high", "mark_low"], "description": "Which mark extreme breached: high liquidates shorts, low liquidates longs."},
+        "trigger_px_ticks": {"type": "integer", "minimum": 0, "description": "The breaching mark extreme, ticks."},
+        "liq_px_ticks": {"type": "integer", "minimum": 0, "description": "The liquidation trigger price that was crossed, ticks."},
+        "close_px_ticks": {"type": "integer", "minimum": 0, "description": "Forced-close execution price: the CONSERVATIVE side of the triggering bar, ticks."},
+        "position_qty_base_1e8": {"type": "integer", "description": "Signed position liquidated, 1e-8 base units."},
+        "penalty_micro": {"type": "integer", "minimum": 0, "description": "Liquidation penalty charged on liquidated notional, micro-quote."},
+        "loss_micro": {"type": "integer", "description": "Total realized loss of the liquidation including penalty, micro-quote (negative = loss)."}
+      }
+    },
+    "KillSwitchTriggered": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["drawdown_1e8", "limit_1e8", "peak_nav_micro", "nav_micro", "flatten_order_seqs"],
+      "description": "Episode drawdown limit (20%) breached: engine force-flattens all positions and keeps observing; further non-flat targets are blocked and recorded (SAFE-3).",
+      "properties": {
+        "drawdown_1e8": {"type": "integer", "minimum": 0, "description": "Peak-to-current NAV drawdown fraction in 1e-8 units at trigger."},
+        "limit_1e8": {"type": "integer", "minimum": 0, "description": "The configured limit (20000000 = 20%)."},
+        "peak_nav_micro": {"type": "integer", "description": "Episode peak NAV, micro-quote."},
+        "nav_micro": {"type": "integer", "description": "NAV at trigger, micro-quote."},
+        "flatten_order_seqs": {"type": "array", "items": {"type": "integer", "minimum": 0}, "description": "seq numbers of the forced flattening OrderFilled events (ordinary fills, referenced not duplicated)."}
+      }
+    },
+    "PostKillSwitchAttempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_lev_1e4", "raw_sha256"],
+      "description": "A non-flat target arrived after the kill switch fired. The attempt itself is discipline evidence (SAFE-1/SAFE-3), recorded alongside its RiskCheck{drawdown-ks, block}.",
+      "properties": {
+        "target_lev_1e4": {"$ref": "#/$defs/target_lev_map", "description": "The attempted (blocked) signed target-leverage vector (see $defs/target_lev_map) - the violation itself is evidence."},
+        "raw_sha256": {"$ref": "#/$defs/sha256", "description": "Content address of the verbatim response that carried the attempt."}
+      }
+    },
+    "EgressBlocked": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["destination", "port", "protocol", "count"],
+      "description": "The sandbox refused a network egress attempt from the agent container (ISO-2). source = 'harness'. Reports flag these as safety events.",
+      "properties": {
+        "destination": {"type": "string", "description": "Destination as observed: domain, DNS name, or IP literal."},
+        "port": {"type": ["integer", "null"], "minimum": 0, "maximum": 65535, "description": "Destination port; null when not applicable (e.g. DNS query name block)."},
+        "protocol": {"enum": ["https", "dns", "tcp", "udp", "other"], "description": "Protocol class of the refused attempt."},
+        "count": {"type": "integer", "minimum": 1, "description": "Coalesced repeat count of identical attempts within the turn."}
+      }
+    },
+    "EpisodeEnd": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "final_turn", "final_nav_micro", "metrics_sha256"],
+      "description": "Always the last event of a complete stream - the in-band completeness sentinel: a stream without EpisodeEnd is truncated (SCH-3).",
+      "properties": {
+        "reason": {"enum": ["completed", "liquidated", "aborted"], "description": "completed = window exhausted; liquidated = terminal liquidation; aborted = operator/pre-flight abort before or during the run."},
+        "final_turn": {"type": ["integer", "null"], "minimum": 0, "description": "Last decision-turn index, or null if aborted before turn 0."},
+        "final_nav_micro": {"type": "integer", "description": "Final NAV, micro-quote."},
+        "metrics_sha256": {"$ref": "#/$defs/sha256", "description": "Hash of metrics.json as finalized."}
+      }
+    }
+  }
+}

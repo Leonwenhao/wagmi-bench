@@ -1,0 +1,52 @@
+name: Pack or data-integrity issue
+description: Report a checksum, source-recipe, validator, or pack-manifest defect.
+title: "[Data]: "
+labels:
+  - data
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never attach upstream archives or built market JSONL. Provide source URLs, sibling checksum text, manifest fields, and secret-free hashes only.
+  - type: input
+    id: pack
+    attributes:
+      label: Pack id
+    validations:
+      required: true
+  - type: input
+    id: source_url
+    attributes:
+      label: Exact upstream source URL
+      description: data.binance.vision bulk URL; do not provide a REST URL.
+    validations:
+      required: true
+  - type: textarea
+    id: hashes
+    attributes:
+      label: Expected and observed hashes
+      description: Include sibling checksum and local SHA-256, never file contents.
+    validations:
+      required: true
+  - type: textarea
+    id: failure
+    attributes:
+      label: Validator or build failure
+      description: Exact error, role, timestamp, and interval where available.
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+    validations:
+      required: true
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Data posture
+      options:
+        - label: I did not attach or redistribute raw archives or built market series.
+          required: true
+        - label: I verified the source is the bulk host, not a live REST endpoint.
+          required: true

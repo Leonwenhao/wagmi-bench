@@ -1,0 +1,127 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wagmibench"
+version = "0.1.0"
+description = "WAGMI Bench: deterministic perps survival benchmark for trading agents"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "jsonschema>=4.21",
+]
+
+[project.scripts]
+wagmibench = "cli.main:main"
+
+[dependency-groups]
+dev = [
+    "build>=1.2",
+    "coverage[toml]>=7.6,<8",
+    "pip-audit==2.10.1",
+    "pytest>=8",
+    "mypy>=1.10",
+    "ruff==0.15.22",
+    "types-jsonschema>=4.21",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = [
+    # Frozen golden/leakage fixture authoring tools are immutable review
+    # evidence, not installed production or test modules.
+    "fixtures/golden-mini/**",
+    "fixtures/leakage-probe/**",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"core/pack.py" = ["E741"] # Wire-format OHLC field name.
+"tools/tests/*.py" = ["E402"] # Direct-script import bootstrap.
+
+[tool.uv]
+required-version = "==0.10.0"
+build-constraint-dependencies = ["setuptools==83.0.0"]
+
+[tool.setuptools.packages.find]
+include = [
+    "spec*",
+    "core*",
+    "data*",
+    "harness*",
+    "recorder*",
+    "agents*",
+    "sandbox*",
+    "cli*",
+    "report*",
+]
+
+[tool.setuptools.package-data]
+spec = [
+    "schemas/*.schema.json",
+    "schemas/VERSIONS.json",
+    "schemas/examples/*.json",
+    "runtime-schemas/*.schema.json",
+    "*.md",
+]
+agents = ["prompts/*.txt"]
+sandbox = [
+    "README.md",
+    "docker/gateway/.dockerignore",
+    "docker/gateway/Dockerfile",
+    "docker/gateway/gateway_server.py",
+    "docker/guard-base/.dockerignore",
+    "docker/guard-base/Dockerfile",
+    "docker/guard/.dockerignore",
+    "docker/guard/Dockerfile",
+    "docker/guard/*.py",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+# ``tools`` has no ``__init__.py`` (its members are run as scripts), so the
+# repo root must be pinned as the package base or mypy sees each module under
+# two names.
+explicit_package_bases = true
+mypy_path = "."
+files = [
+    "spec",
+    "core",
+    "data",
+    "harness",
+    "recorder",
+    "agents",
+    "sandbox",
+    "cli",
+    "report",
+    "tools",
+]
+exclude = [
+    # Audit/evidence tooling *sources* are strict-clean and checked above.
+    # Their test modules are not yet strict-clean (Path(...) over
+    # ``str | bytes`` and implicit re-export reads); tracked as a follow-up,
+    # not owned by the guard-rail slice that added `tools` to this list.
+    "^tools/tests/",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "spec/tests",
+    "core/tests",
+    "data/tests",
+    "harness/tests",
+    "recorder/tests",
+    "agents/tests",
+    "sandbox/tests",
+    "cli/tests",
+    "report/tests",
+    "tools/tests",
+]

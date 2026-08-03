@@ -1,0 +1,265 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  quality:
+    name: quality (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.10.0"
+          enable-cache: true
+      - name: Verify and install the exact dependency lock
+        run: |
+          uv lock --check
+          uv sync --locked --group dev
+      - name: Lint
+        run: uv run --locked --no-sync ruff check .
+      - name: Enforce no-market-data tracked-tree policy
+        run: >-
+          uv run --locked --no-sync
+          python -m data.distribution_guard --repo-root .
+      - name: Build and scan Python distribution artifacts
+        run: |
+          uv build --out-dir "${RUNNER_TEMP}/tradeevolve-dist"
+          uv run --locked --no-sync python -m data.distribution_guard \
+            --repo-root . \
+            --artifact-dir "${RUNNER_TEMP}/tradeevolve-dist" \
+            --skip-tracked
+      - name: Test
+        run: uv run --locked --no-sync pytest -q
+      - name: Enforce production-only core/spec coverage
+        run: |
+          uv run --locked --no-sync coverage erase
+          uv run --locked --no-sync coverage run -m pytest -q core/tests spec/tests
+          uv run --locked --no-sync coverage report
+      - name: Kill bounded money-path mutants
+        run: >-
+          uv run --locked --no-sync
+          python tools/eng2_mutation_spotcheck.py
+      - name: Type check
+        run: uv run --locked --no-sync python -m mypy
+      - name: Audit the complete locked dependency graph
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          uv export \
+            --locked \
+            --all-groups \
+            --no-emit-project \
+            --format requirements.txt \
+            --output-file "${RUNNER_TEMP}/audit-requirements.txt" \
+            --quiet
+          uv run --locked --no-sync pip-audit \
+            --require-hashes \
+            --strict \
+            --progress-spinner off \
+            -r "${RUNNER_TEMP}/audit-requirements.txt"
+
+  macos-bundle:
+    name: produce evidence bundle (macOS arm64)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.10.0"
+          enable-cache: true
+      - run: |
+          uv lock --check
+          uv sync --locked --group dev
+      - name: Produce and verify bundle
+        run: |
+          uv run --locked --no-sync python -c 'from pathlib import Path; from recorder.tests.test_replay import _record; _record(Path("/tmp/macos-bundle"))'
+          uv run --locked --no-sync python -c 'from recorder.verify import verify_bundle; result=verify_bundle("/tmp/macos-bundle"); assert result.is_complete, result'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m2-macos-bundle
+          path: /tmp/macos-bundle
+          if-no-files-found: error
+          retention-days: 7
+
+  linux-replay-and-bundle:
+    name: replay macOS bundle and produce Linux bundle
+    needs: macos-bundle
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.10.0"
+          enable-cache: true
+      - run: |
+          uv lock --check
+          uv sync --locked --group dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: m2-macos-bundle
+          path: /tmp/macos-bundle
+      - name: Replay macOS bundle on Linux
+        run: >-
+          uv run --locked --no-sync
+          python -c 'from recorder.replay import replay_bundle; replay_bundle("/tmp/macos-bundle", pack_dir="fixtures/golden-mini/pack")'
+      - name: Produce and verify Linux bundle
+        run: |
+          uv run --locked --no-sync python -c 'from pathlib import Path; from recorder.tests.test_replay import _record; _record(Path("/tmp/linux-bundle"))'
+          uv run --locked --no-sync python -c 'from recorder.verify import verify_bundle; result=verify_bundle("/tmp/linux-bundle"); assert result.is_complete, result'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m2-linux-bundle
+          path: /tmp/linux-bundle
+          if-no-files-found: error
+          retention-days: 7
+
+  macos-replay-linux:
+    name: replay Linux bundle on macOS arm64
+    needs: linux-replay-and-bundle
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.10.0"
+          enable-cache: true
+      - run: |
+          uv lock --check
+          uv sync --locked --group dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: m2-linux-bundle
+          path: /tmp/linux-bundle
+      - name: Replay Linux bundle on macOS
+        run: >-
+          uv run --locked --no-sync
+          python -c 'from recorder.replay import replay_bundle; replay_bundle("/tmp/linux-bundle", pack_dir="fixtures/golden-mini/pack")'
+
+  reproducible-images:
+    name: prove reproducible OCI image exports
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.10.0"
+          enable-cache: true
+      - name: Verify dependency lock
+        run: |
+          uv lock --check
+          uv sync --locked --group dev
+      - name: Enable the containerd image store (docker load of OCI archives)
+        run: |
+          if [ -f /etc/docker/daemon.json ]; then
+            sudo jq '.features."containerd-snapshotter" = true' \
+              /etc/docker/daemon.json > /tmp/daemon.json
+          else
+            echo '{"features":{"containerd-snapshotter":true}}' > /tmp/daemon.json
+          fi
+          sudo mv /tmp/daemon.json /etc/docker/daemon.json
+          sudo systemctl restart docker
+          docker info --format '{{.DriverStatus}}' || true
+        # With the containerd store enabled, the DEFAULT buildx driver both
+        # supports --output type=oci and resolves locally-built base images
+        # (tradeevolve/guard-base:0.1.0); an isolated docker-container driver
+        # would try to pull that local-only tag from Docker Hub and fail.
+      - name: Build every image twice and verify exact OCI bytes
+        run: |
+          set -euo pipefail
+          uv run --locked --no-sync python -m sandbox.reproducible \
+            --repo-root . \
+            --output-dir "${RUNNER_TEMP}/tradeevolve-images" \
+            | tee "${RUNNER_TEMP}/tradeevolve-image-receipt.json"
+
+  live-isolation:
+    name: keyless live ISO-2 attack matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.10.0"
+          enable-cache: true
+      - name: Verify and install the exact dependency lock
+        run: |
+          uv lock --check
+          uv sync --locked --group dev
+      - name: Build the runtime images
+        run: |
+          set -euo pipefail
+          python_base="$(sed -n 's/^ARG PYTHON_BASE=//p' agents/Dockerfile)"
+          test -n "${python_base}"
+          docker build \
+            --pull=false \
+            --network=none \
+            --build-arg "PYTHON_BASE=${python_base}" \
+            --tag tradeevolve-agent:ci \
+            agents
+          docker build \
+            --pull=false \
+            --network=none \
+            --build-arg "PYTHON_BASE=${python_base}" \
+            --tag tradeevolve-gateway:ci \
+            sandbox/docker/gateway
+          docker build \
+            --pull=false \
+            --build-arg "PYTHON_BASE=${python_base}" \
+            --tag tradeevolve-guard-base:ci \
+            sandbox/docker/guard-base
+          docker build \
+            --pull=false \
+            --network=none \
+            --build-arg "GUARD_BASE=tradeevolve-guard-base:ci" \
+            --tag tradeevolve-guard:ci \
+            sandbox/docker/guard
+      - name: Prove allowlisted TLS and six blocked exfiltration paths
+        run: |
+          set -euo pipefail
+          agent_id="$(docker image inspect --format '{{.Id}}' tradeevolve-agent:ci)"
+          gateway_id="$(docker image inspect --format '{{.Id}}' tradeevolve-gateway:ci)"
+          guard_id="$(docker image inspect --format '{{.Id}}' tradeevolve-guard:ci)"
+          uv run --locked --no-sync python -m tools.iso2_live_probe \
+            --repo-root . \
+            --agent-image "${agent_id}" \
+            --gateway-image "${gateway_id}" \
+            --guard-image "${guard_id}" \
+            | tee "${RUNNER_TEMP}/tradeevolve-iso2-live.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iso2-live-receipt
+          path: ${{ runner.temp }}/tradeevolve-iso2-live.json
+          if-no-files-found: error
+          retention-days: 7

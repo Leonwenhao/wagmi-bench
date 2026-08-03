@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/runner_response.v1.schema.json",
+  "title": "runner_response/v1",
+  "description": "Body of the agent's HTTP 200 response to POST /decide (IC-6): a single BARE action/v1 document - no response envelope (optionality like comment/usage lives inside action/v1, keeping the agent-side contract minimal, per the dev-plan sketch). Content-Type: application/json; body <= 65536 bytes; exactly one JSON document (trailing garbage = invalid_json). The harness content-addresses the VERBATIM response bytes into raw/ before any parsing - evidence first, interpretation second - so this schema constrains validity, never what gets recorded. Anything else (non-200, unparseable, schema-invalid, oversize) follows the IC-3 validation table and the IC-6 retry semantics.",
+  "$ref": "https://tradeevolve.dev/spec/schemas/action.v1.schema.json"
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "action/v1",
+  "intent_kind": "leverage_target",
+  "target": {
+    "BTC": "-1.5"
+  },
+  "max_slippage_bps": 30,
+  "comment": "Funding pinned at the negative cap and basis widening; short 1.5x with tight slippage tolerance, will flatten if next print normalizes.",
+  "usage": {
+    "input_tokens": 5200,
+    "output_tokens": 180
+  }
+}

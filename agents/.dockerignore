@@ -1,0 +1,15 @@
+**
+!Dockerfile
+!.dockerignore
+!__init__.py
+!common.py
+!cost.py
+!evidence.py
+!evoskill.py
+!llm.py
+!manifest.py
+!prompt.py
+!reckless.py
+!server.py
+!prompts/
+!prompts/baseline-system.txt

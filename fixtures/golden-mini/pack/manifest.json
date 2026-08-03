@@ -1,0 +1,117 @@
+{
+  "schema": "pack_manifest/v1",
+  "pack_id": "golden-mini",
+  "content_hash": "sha256:cd49b97b981cd01c1f61fe9c9f2ab4a43c128e21ad00e535d6e4216527b176e9",
+  "venue": "binance-um",
+  "window": {
+    "start_ts": 1590994800000,
+    "end_ts": 1591045200000
+  },
+  "bar_intervals_ms": [
+    3600000
+  ],
+  "decision_bar_ms": 3600000,
+  "warmup_bars": 0,
+  "markets": {
+    "BTC": {
+      "instrument": "binance-um:BTCUSDT",
+      "base_asset": "BTC",
+      "quote_asset": "USDT",
+      "tick_size_micro": 10000,
+      "qty_step_base_1e8": 100000,
+      "min_notional_micro": 10000000,
+      "leverage_cap_lev_1e4": 30000,
+      "margin": {
+        "tiers": [
+          {
+            "notional_cap_micro": 9007199254740991,
+            "initial_rate_1e8": 33333334,
+            "maintenance_rate_1e8": 16666667
+          }
+        ],
+        "liquidation_penalty_1e8": 1000000
+      },
+      "funding": {
+        "interval_ms": 14400000,
+        "settlement_offsets_ms": [
+          0,
+          14400000,
+          28800000,
+          43200000,
+          57600000,
+          72000000
+        ],
+        "cap_1e8": 300000,
+        "floor_1e8": -300000
+      },
+      "fees": {
+        "maker_rate_1e8": 15000,
+        "taker_rate_1e8": 45000
+      },
+      "execution": {
+        "half_spread_1e8": 50000,
+        "impact_model": "linear",
+        "impact_coeff_1e8": 0,
+        "participation_cap_1e8": 10000000,
+        "cost_profile_multipliers_1e4": {
+          "primary": 10000,
+          "stress_2x": 20000
+        }
+      },
+      "calibration_note": "Synthetic fixture: half_spread fixed at 5 bp, impact coefficient 0 (impact deliberately disabled so fills are hand-checkable). Not calibrated from any real window."
+    }
+  },
+  "files": [
+    {
+      "path": "bars_1h.jsonl",
+      "role": "trade",
+      "market": "BTC",
+      "interval_ms": 3600000,
+      "row_schema": "bar_row/v1",
+      "sha256": "sha256:52fb68703aff6c4f277ac04b45e3bfb06b36952ed1b941c976ff90fc9408d184",
+      "bytes": 1663,
+      "records": 14,
+      "upstream": []
+    },
+    {
+      "path": "mark_1h.jsonl",
+      "role": "mark",
+      "market": "BTC",
+      "interval_ms": 3600000,
+      "row_schema": "bar_row/v1",
+      "sha256": "sha256:720074e6ea29fda22acd50106d1852908d649311341fcdf2f25e294a3da47761",
+      "bytes": 1538,
+      "records": 14,
+      "upstream": []
+    },
+    {
+      "path": "index_1h.jsonl",
+      "role": "index",
+      "market": "BTC",
+      "interval_ms": 3600000,
+      "row_schema": "bar_row/v1",
+      "sha256": "sha256:31110deace7400fb2d895a0681937d2f0253f4f563fd07c678629f9bfea43477",
+      "bytes": 1538,
+      "records": 14,
+      "upstream": []
+    },
+    {
+      "path": "funding.jsonl",
+      "role": "funding",
+      "market": "BTC",
+      "interval_ms": 0,
+      "row_schema": "funding_row/v1",
+      "sha256": "sha256:ee1617d06fd76502a1ed22098db72a68ee3d5702e2161240b868063589305327",
+      "bytes": 270,
+      "records": 4,
+      "upstream": []
+    }
+  ],
+  "default_lookback": {
+    "bars": 4,
+    "funding_prints": 2
+  },
+  "regime_description": "SYNTHETIC data, hand-authored for golden-ledger math (C0.3): 14 one-hour bars around 10000.00 USDT. Flat open, a thin-volume bar that forces a participation-cap partial cancel, one violent intra-bar wick to 7450.00 on the MARK series (near-liquidation for a ~2.3x long, no cross), then a grinding decline traded from the short side. Not real market data; upstream lists are empty by design. Never serialized into observations.",
+  "claim_label": "survival-stress",
+  "created_by_version": "0.1.0"
+}

@@ -1,0 +1,71 @@
+{
+  "content_hash": "sha256:4ecd617ee13ce9e226306a6742dde06d18528a26b6d19a778de10d7c2cdd4e8b",
+  "pack_id": "leakage-probe",
+  "poison_available_at": 1591689600000,
+  "poison_rows": [
+    {
+      "available_at": 1591689600000,
+      "file": "bars_4h.jsonl",
+      "row_index": 5,
+      "sentinel_fields": {
+        "c": 424242000102,
+        "h": 424242000103,
+        "l": 424242000100,
+        "o": 424242000101,
+        "v_base_1e8": 424242000104
+      },
+      "ts": 1591041600000
+    },
+    {
+      "available_at": 1591689600000,
+      "file": "mark_4h.jsonl",
+      "row_index": 3,
+      "sentinel_fields": {
+        "c": 424242000202,
+        "h": 424242000203,
+        "l": 424242000200,
+        "o": 424242000201
+      },
+      "ts": 1591012800000
+    },
+    {
+      "available_at": 1591689600000,
+      "file": "index_4h.jsonl",
+      "row_index": 6,
+      "sentinel_fields": {
+        "c": 424242000302,
+        "h": 424242000303,
+        "l": 424242000300,
+        "o": 424242000301
+      },
+      "ts": 1591056000000
+    },
+    {
+      "available_at": 1591689600000,
+      "file": "funding.jsonl",
+      "row_index": 2,
+      "sentinel_fields": {
+        "rate_1e8": 42424242
+      },
+      "ts": 1591027200000
+    }
+  ],
+  "rule": "SECONDARY TRIPWIRE (necessary, not sufficient - see README): if ANY integer listed in sentinel_values ever appears in ANY field of ANY emitted observation (or any other agent-visible surface), the run FAILS ISO-1. Detection is by value equality on stored observation bytes. The PRIMARY ISO-1 check is the max(available_at) <= clock_ts property cross-checked against pack bytes, with field->source-row provenance mapping for surfaces lacking in-band available_at (funding prints, mark/index scalars); passing this value scan alone does not prove leak-freedom.",
+  "schema": "leakage_sentinel_registry/v1",
+  "sentinel_values": [
+    42424242,
+    424242000100,
+    424242000101,
+    424242000102,
+    424242000103,
+    424242000104,
+    424242000200,
+    424242000201,
+    424242000202,
+    424242000203,
+    424242000300,
+    424242000301,
+    424242000302,
+    424242000303
+  ]
+}

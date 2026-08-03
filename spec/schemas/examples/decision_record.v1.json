@@ -1,0 +1,130 @@
+{
+  "schema": "decision_record/v1",
+  "run_id": "run_7d3f0a1b2c4d5e6f",
+  "turn": 5,
+  "bar_index": 5,
+  "ts": 1581523200000,
+  "saw": {
+    "observation_sha256": "sha256:aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11",
+    "observation_ref": "observations/0005.json"
+  },
+  "said": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "raw_ref": "raw/0005-a1.txt",
+        "raw_sha256": "sha256:bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22",
+        "raw_bytes": 412,
+        "latency_ms": 8734,
+        "http_status": 200,
+        "token_usage": {
+          "input_tokens": 5200,
+          "output_tokens": 180
+        },
+        "transport": "http"
+      }
+    ]
+  },
+  "meant": {
+    "status": "parsed",
+    "action": {
+      "intent_kind": "leverage_target",
+      "target_lev_1e4": {
+        "BTC": -15000
+      },
+      "max_slippage_bps": 30,
+      "from_attempt": 1
+    },
+    "rejected": null
+  },
+  "rules": [
+    {
+      "constraint_id": "lev-gross",
+      "constraint_type": "leverage_cap_gross",
+      "scope": "account",
+      "observed": 15000,
+      "limit": 30000,
+      "unit": "lev_1e4",
+      "verdict": "pass"
+    },
+    {
+      "constraint_id": "lev-BTC",
+      "constraint_type": "leverage_cap_market",
+      "scope": "BTC",
+      "observed": 15000,
+      "limit": 30000,
+      "unit": "lev_1e4",
+      "verdict": "pass"
+    },
+    {
+      "constraint_id": "drawdown-ks",
+      "constraint_type": "drawdown_kill_switch",
+      "scope": "account",
+      "observed": 3120000,
+      "limit": 20000000,
+      "unit": "1e8",
+      "verdict": "pass"
+    }
+  ],
+  "happened": {
+    "fills": [
+      {
+        "market": "BTC",
+        "side": "sell",
+        "requested_qty_base_1e8": 50000000,
+        "qty_base_1e8": 50000000,
+        "ref_open_px_ticks": 86550,
+        "half_spread_ticks": 44,
+        "impact_ticks": 12,
+        "fill_px_ticks": 86494,
+        "notional_micro": 4324700000,
+        "fee_micro": 1729880,
+        "slippage_1e8": -64703,
+        "cost_profile": "primary"
+      }
+    ],
+    "cancels": [],
+    "liquidation": null,
+    "post_kill_switch_attempt": null
+  },
+  "cost_to_hold": {
+    "funding": [
+      {
+        "market": "BTC",
+        "settlement_ts": 1581552000000,
+        "rate_1e8": -75000,
+        "index_px_ticks": 86510,
+        "position_qty_base_1e8": -100000000,
+        "amount_micro": -3243525
+      }
+    ],
+    "margin_after": {
+      "market": "BTC",
+      "mark_px_ticks": 86490,
+      "mark_high_ticks": 87310,
+      "mark_low_ticks": 85990,
+      "position_qty_base_1e8": -100000000,
+      "entry_px_ticks": 86847,
+      "margin_micro": 2894900000,
+      "maintenance_margin_micro": 1441560000,
+      "upnl_micro": 35700000,
+      "liq_px_ticks": 100240,
+      "dist_to_liq_1e8": 15898230,
+      "min_intrabar_dist_to_liq_1e8": 14210000
+    }
+  },
+  "account_after": {
+    "nav_micro": 10101526595,
+    "cash_micro": 7170926595,
+    "realized_pnl_micro": 101526595,
+    "d_nav_micro": 30526595,
+    "d_price_pnl_micro": 35500000,
+    "d_funding_micro": -3243525,
+    "d_fees_micro": -1729880,
+    "d_liq_penalty_micro": 0
+  },
+  "event_seq_range": {
+    "first_seq": 38,
+    "last_seq": 47
+  }
+}

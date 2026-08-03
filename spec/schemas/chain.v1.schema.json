@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/chain.v1.schema.json",
+  "title": "chain/v1",
+  "description": "Tamper-evidence seal of a bundle: chain.json, written ONCE at clean finalize (its PRESENCE is the primary completeness marker). Two linear hash chains run over the bundle: 'events' (each events.jsonl line) and 'decisions' (each decisions/NNNN.json file's bytes). Links are appended incrementally to chain.jsonl (one chain_link/v1 line per chained record, fsynced with its record) so a kill -9 at any point leaves a fully verifiable prefix (SCH-3, C3.1). Linear chains, not Merkle: V1 verification is always whole-prefix, and per-record links localize tampering exactly - the first seq where a recomputed hash diverges NAMES the record; the protocol doc's Merkle commitments are Phase-2 multi-party machinery that can wrap this root later without changing any record format. Genesis binds run identity, pack, agent, and config, so a chain cannot be transplanted between runs. Verification always operates on STORED BYTES, never on re-encoded parsed objects. Verifier verdict is three-valued: COMPLETE / TRUNCATED / CORRUPT - never a boolean.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "streams", "files", "blobs", "complete", "root"],
+  "properties": {
+    "schema": {
+      "const": "chain/v1",
+      "description": "Schema name and major version of this document (the seal). Lines of chain.jsonl use $defs/chain_link with schema 'chain_link/v1'."
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run_[0-9a-f]{16}$",
+      "description": "Run this seal covers (matches bundle_manifest.run_id)."
+    },
+    "streams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["events", "decisions"],
+      "description": "Per-stream chain summary. Genesis (per stream) = SHA-256 of JCS({schema:'chain_genesis/v1', stream, run_id, pack_content_hash, agent_manifest_sha256, run_config_sha256}) where run_config_sha256 = SHA-256 of JCS(bundle_manifest.run_config). Link i = SHA-256 of JCS({schema:'chain_link/v1', stream, seq: i, record_sha256: h_i, prev: link_(i-1)}) with prev = genesis for i = 0.",
+      "properties": {
+        "events": {"$ref": "#/$defs/stream_head", "description": "Head of the events.jsonl hash chain (see $defs/stream_head)."},
+        "decisions": {"$ref": "#/$defs/stream_head", "description": "Head of the decisions/ record hash chain (see $defs/stream_head)."}
+      }
+    },
+    "files": {
+      "type": "object",
+      "description": "Whole-file content addresses of every non-chained bundle file (manifests, ledgers, metrics, chain.jsonl itself): bundle-relative path -> SHA-256 over the complete uncompressed bytes. These files are pure derivations of the chained streams + pack, so content-addressing (not per-record chaining) suffices.",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "description": "SHA-256 of the file's uncompressed bytes."
+      }
+    },
+    "blobs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observations", "raw"],
+      "description": "Counts of content-addressed blob stores. Individual blob hashes are already committed inside chained events (ObservationEmitted.observation_sha256, AgentResponded.raw_sha256), so only counts are needed here. Under the share redaction profile, raw/ blobs may be deleted; the chain remains valid and redaction.json lists the absences.",
+      "properties": {
+        "observations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count"],
+          "properties": {"count": {"type": "integer", "minimum": 0, "description": "Number of stored observation files (= turns)."}},
+          "description": "observations/NNNN.json store."
+        },
+        "raw": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count"],
+          "properties": {"count": {"type": "integer", "minimum": 0, "description": "Number of stored raw response files (attempts across all turns)."}},
+          "description": "raw/NNNN-aK.txt store."
+        }
+      }
+    },
+    "complete": {
+      "type": "boolean",
+      "description": "True iff finalize succeeded and the final event is EpisodeEnd. chain.json only exists on clean finalize, so this is true in practice; a crashed run has NO chain.json and verifies as TRUNCATED from chain.jsonl alone."
+    },
+    "root": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "The bundle's single publishable identity: SHA-256 over the JCS bytes of this document with the 'root' member removed. Printed on reports and share cards; a share sub-bundle names its parent by this value."
+    }
+  },
+  "$defs": {
+    "stream_head": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["genesis", "head", "count"],
+      "description": "Summary of one linear hash chain.",
+      "properties": {
+        "genesis": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "Genesis link value binding the chain to run identity, pack content hash, agent manifest, and run config."
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "Final link value after the last record."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of chained records (events: lines; decisions: files)."
+        }
+      }
+    },
+    "chain_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "stream", "seq", "record_sha256", "link_sha256"],
+      "description": "One line of chain.jsonl, appended and fsynced together with its record so the surviving prefix of a crashed run is fully verifiable.",
+      "properties": {
+        "schema": {"const": "chain_link/v1", "description": "Schema name and major version of this line."},
+        "stream": {"enum": ["events", "decisions"], "description": "Which chain this link extends."},
+        "seq": {"type": "integer", "minimum": 0, "description": "0-based position: event seq, or decision turn index."},
+        "record_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "SHA-256 of the record's stored bytes (JSONL line excluding its terminating newline; decision file: whole file bytes)."},
+        "link_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "This link's value: SHA-256 of JCS({schema:'chain_link/v1', stream, seq, record_sha256, prev}) where prev is the previous link value (genesis for seq 0). Stored so verification can restart from any prefix point."}
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "schema": "bundle_manifest/v1",
+  "run_id": "run_7d3f0a1b2c4d5e6f",
+  "episode_id": "ep_3f2a9c81d4e5b607",
+  "created_at_ms": 1784937600000,
+  "pack": {
+    "pack_id": "covid-2020",
+    "content_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+    "manifest_sha256": "sha256:ee55ee55ee55ee55ee55ee55ee55ee55ee55ee55ee55ee55ee55ee55ee55ee55"
+  },
+  "agent_manifest_sha256": "sha256:ff66ff66ff66ff66ff66ff66ff66ff66ff66ff66ff66ff66ff66ff66ff66ff66",
+  "engine_version": "0.1.0",
+  "spec_versions": {
+    "pack_manifest/v1": "1.0.0",
+    "bar_row/v1": "1.0.0",
+    "funding_row/v1": "1.0.0",
+    "observation/v1": "1.0.0",
+    "action/v1": "1.0.0",
+    "event/v1": "1.0.0",
+    "decision_record/v1": "1.0.0",
+    "agent_manifest/v1": "1.0.0",
+    "bundle_manifest/v1": "1.0.0",
+    "chain/v1": "1.0.0",
+    "ledger_row/v1": "1.0.0",
+    "metrics/v1": "1.0.0",
+    "runner_request/v1": "1.0.0",
+    "runner_response/v1": "1.0.0",
+    "redaction/v1": "1.0.0"
+  },
+  "time_rebase_offset_ms": 1580342400000,
+  "run_config": {
+    "lookback_bars": null,
+    "funding_prints": null,
+    "response_deadline_ms": 120000,
+    "seed": 0,
+    "cost_profiles": ["primary", "stress_2x"],
+    "starting_nav_micro": 10000000000,
+    "leverage_cap_gross_lev_1e4": 30000,
+    "drawdown_kill_switch_1e8": 20000000,
+    "turnover_cap_1e8": null
+  },
+  "host": {
+    "os": "linux",
+    "arch": "x86_64",
+    "python": "3.12.4"
+  }
+}

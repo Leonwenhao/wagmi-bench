@@ -1,0 +1,104 @@
+{
+  "schema": "observation/v1",
+  "episode": {
+    "episode_id": "ep_3f2a9c81d4e5b607",
+    "turn": 5,
+    "bar_index": 5,
+    "bars_total": 480,
+    "bars_remaining": 474,
+    "decision_bar_ms": 14400000,
+    "response_deadline_ms": 120000
+  },
+  "clock_ts": 1180800000,
+  "markets": {
+    "BTC": {
+      "tick_size_micro": 100000,
+      "qty_step_base_1e8": 100000,
+      "min_notional_micro": 10000000,
+      "taker_fee_rate_1e8": 40000,
+      "leverage_cap_lev_1e4": 30000,
+      "last_mark_px_ticks": 86490,
+      "last_index_px_ticks": 86510,
+      "bars": [
+        {
+          "ts": 1152000000,
+          "available_at": 1166400000,
+          "o": 87100,
+          "h": 87450,
+          "l": 86300,
+          "c": 86700,
+          "v_base_1e8": 1189000000000
+        },
+        {
+          "ts": 1166400000,
+          "available_at": 1180800000,
+          "o": 86700,
+          "h": 87200,
+          "l": 85950,
+          "c": 86550,
+          "v_base_1e8": 1234500000000
+        }
+      ],
+      "funding": {
+        "interval_ms": 28800000,
+        "next_settlement_ts": 1209600000,
+        "cap_1e8": 300000,
+        "floor_1e8": -300000,
+        "prints": [
+          {
+            "ts": 1152000000,
+            "rate_1e8": -75000
+          },
+          {
+            "ts": 1180800000,
+            "rate_1e8": -120000
+          }
+        ]
+      }
+    }
+  },
+  "position": {
+    "BTC": {
+      "qty_base_1e8": -50000000,
+      "entry_px_ticks": 87200,
+      "upnl_micro": 35500000,
+      "margin_micro": 1441500000,
+      "liq_px_ticks": 100240,
+      "dist_to_liq_1e8": 15898230
+    }
+  },
+  "account": {
+    "nav_micro": 10071000000,
+    "cash_micro": 8594000000,
+    "realized_pnl_micro": 106500000
+  },
+  "risk": {
+    "constraints": [
+      {
+        "constraint_id": "lev-gross",
+        "type": "leverage_cap_gross",
+        "scope": "account",
+        "limit": 30000,
+        "used": 4294,
+        "unit": "lev_1e4"
+      },
+      {
+        "constraint_id": "lev-BTC",
+        "type": "leverage_cap_market",
+        "scope": "BTC",
+        "limit": 30000,
+        "used": 4294,
+        "unit": "lev_1e4"
+      },
+      {
+        "constraint_id": "drawdown-ks",
+        "type": "drawdown_kill_switch",
+        "scope": "account",
+        "limit": 20000000,
+        "used": 3120000,
+        "unit": "1e8"
+      }
+    ],
+    "kill_switch_active": false
+  }
+}

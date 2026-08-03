@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/ledger_row.v1.schema.json",
+  "title": "ledger_row/v1",
+  "description": "One line of ledger.jsonl (primary cost profile) or ledger_stress_2x.jsonl (2x cost-profile re-simulation of the SAME recorded action trace - stored data, not an in-memory derivation, so MATH-5/MATH-6 checks run on bytes): bar-by-bar account state with the delta-NAV attribution terms STORED, not derived. NORMATIVE INVARIANT (CI, MATH-2): nav_micro[i] - nav_micro[i-1] == d_price_pnl_micro + d_funding_micro + d_fees_micro + d_liq_penalty_micro, exactly, in integer micro-units, every bar; cash changes only by realized components, to the unit. The ledger IS the equity curve; metrics.json references it rather than duplicating it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ts", "bar_index", "turn", "profile", "nav_micro", "cash_micro", "realized_pnl_micro", "d_nav_micro", "d_price_pnl_micro", "d_funding_micro", "d_fees_micro", "d_liq_penalty_micro", "positions"],
+  "properties": {
+    "ts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Bar close, REAL UTC epoch-milliseconds (bundle side)."
+    },
+    "bar_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Decision-bar index of this row."
+    },
+    "turn": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Decision-turn index whose holding bar this row closes (bar k, k >= 1, is turn k-1's holding bar). Null ONLY for the bar-0 opening row, which no turn's holding bar closes: it seeds the equity curve at run_config.starting_nav_micro with all four delta terms zero."
+    },
+    "profile": {
+      "enum": ["primary", "stress_2x"],
+      "description": "Cost profile of this row's simulation (matches the containing file)."
+    },
+    "nav_micro": {
+      "type": "integer",
+      "description": "Net asset value at bar close, micro-quote."
+    },
+    "cash_micro": {
+      "type": "integer",
+      "description": "Free cash at bar close, micro-quote."
+    },
+    "realized_pnl_micro": {
+      "type": "integer",
+      "description": "Cumulative realized PnL including funding and fees since episode start, micro-quote."
+    },
+    "d_nav_micro": {
+      "type": "integer",
+      "description": "NAV change over this bar, micro-quote. INVARIANT: equals the sum of the four attribution terms below, exactly."
+    },
+    "d_price_pnl_micro": {
+      "type": "integer",
+      "description": "Mark-to-market price PnL component of the bar's NAV change, micro-quote."
+    },
+    "d_funding_micro": {
+      "type": "integer",
+      "description": "Funding component, micro-quote (negative = paid)."
+    },
+    "d_fees_micro": {
+      "type": "integer",
+      "description": "Fee component, micro-quote (always <= 0)."
+    },
+    "d_liq_penalty_micro": {
+      "type": "integer",
+      "description": "Liquidation penalty component, micro-quote (0 except the terminal bar)."
+    },
+    "positions": {
+      "type": "object",
+      "description": "Map: market alias -> position state at bar close. Per-market ledger from day one (multi-asset shape, Scope section 2). Flat markets appear with qty 0 and null price fields.",
+      "propertyNames": {
+        "pattern": "^[A-Z0-9]{1,12}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "One market's position state at bar close (the value of each positions map entry).",
+        "additionalProperties": false,
+        "required": ["qty_base_1e8", "entry_px_ticks", "mark_px_ticks", "upnl_micro", "margin_micro", "maintenance_margin_micro", "liq_px_ticks", "dist_to_liq_1e8"],
+        "properties": {
+          "qty_base_1e8": {"type": "integer", "description": "Signed position size, 1e-8 base units."},
+          "entry_px_ticks": {"type": ["integer", "null"], "description": "Volume-weighted entry price, ticks; null when flat."},
+          "mark_px_ticks": {"type": "integer", "minimum": 0, "description": "Mark-price close of the bar, ticks."},
+          "upnl_micro": {"type": "integer", "description": "Unrealized PnL at mark, micro-quote."},
+          "margin_micro": {"type": "integer", "minimum": 0, "description": "Isolated margin allocated, micro-quote."},
+          "maintenance_margin_micro": {"type": "integer", "minimum": 0, "description": "Maintenance margin required, micro-quote."},
+          "liq_px_ticks": {"type": ["integer", "null"], "description": "Liquidation trigger price, ticks; null when flat."},
+          "dist_to_liq_1e8": {"type": ["integer", "null"], "description": "Distance to liquidation as a 1e-8 fraction of mark; null when flat."}
+        }
+      }
+    }
+  }
+}

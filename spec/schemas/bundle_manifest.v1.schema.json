@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/bundle_manifest.v1.schema.json",
+  "title": "bundle_manifest/v1",
+  "description": "Identity of one run's evidence bundle, written ONCE at run start and never mutated (immutability beats a mutable status flag; completeness is signaled by chain.json presence + the EpisodeEnd sentinel). Pins the pack (by content hash), the agent (by manifest hash), the engine (exact semver - replay refuses any mismatch, DET-6), and the run configuration (inlined here so the whole replay input is one hashed document). Contains the single permitted wall-clock read (created_at_ms: recorded, never consumed) and the observation time-rebase offset (recorded, never observable by the agent).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "episode_id", "created_at_ms", "pack", "agent_manifest_sha256", "engine_version", "spec_versions", "time_rebase_offset_ms", "run_config", "host"],
+  "properties": {
+    "schema": {
+      "const": "bundle_manifest/v1",
+      "description": "Schema name and major version of this document."
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run_[0-9a-f]{16}$",
+      "description": "Harness-generated random run identifier. Identity, not computation: allowed entropy because it never enters the replay function's economics."
+    },
+    "episode_id": {
+      "type": "string",
+      "pattern": "^ep_[0-9a-f]{16}$",
+      "description": "The opaque episode id shown to the agent (observation.episode.episode_id). Recorded here so the bundle discloses the mapping the agent never sees."
+    },
+    "created_at_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Harness wall clock at run start, UTC epoch-ms. THE single permitted wall-clock read in the system: recorded, never consumed (DET-4)."
+    },
+    "pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pack_id", "content_hash", "manifest_sha256"],
+      "description": "Which pack, pinned by content: the auditor's link from evidence to data. Replay refuses a pack whose recomputed content hash differs.",
+      "properties": {
+        "pack_id": {"type": "string", "description": "Pack slug, e.g. 'covid-2020' (operator-side; never in observations)."},
+        "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "pack_manifest.content_hash of the pack used."},
+        "manifest_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "SHA-256 of the pack's manifest.json bytes."}
+      }
+    },
+    "agent_manifest_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 of agent_manifest.json bytes - manifest contents are covered by the chain via this indirection."
+    },
+    "engine_version": {
+      "type": "string",
+      "description": "Exact engine/package semver that produced this bundle. tradeevolve replay REQUIRES equality; mismatch is a refusal naming both values, never silent best-effort (DET-6)."
+    },
+    "spec_versions": {
+      "type": "object",
+      "description": "Map: schema name -> full version used (e.g. {'observation/v1': '1.0.0'}). The compatibility surface replay checks; sourced from spec/schemas/VERSIONS.json at run time.",
+      "additionalProperties": {
+        "type": "string",
+        "description": "Full semver of the named schema."
+      }
+    },
+    "time_rebase_offset_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Epoch-ms subtracted from real time to produce every observation timestamp: the largest whole multiple of 604800000 (one week) <= pack window start. Preserves time-of-day and weekday, destroys the calendar date (ISO-4). Recorded here for auditors; never observable by the agent (ISO-3)."
+    },
+    "run_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lookback_bars", "funding_prints", "response_deadline_ms", "seed", "cost_profiles", "starting_nav_micro", "leverage_cap_gross_lev_1e4", "drawdown_kill_switch_1e8", "turnover_cap_1e8"],
+      "description": "The run's operator configuration, inlined (rather than a separate file) so the complete replay input is pinned by this one hashed document. The ECONOMIC SEED IS COMPLETE here: starting_nav_micro, the gross leverage cap, the drawdown kill-switch threshold, and the turnover cap are all recorded per run (DET-1/DET-3: replay is a pure function of pack bytes + this object + recorded events; no hidden inputs). Effective-lookback rule: lookback values win over pack defaults when non-null.",
+      "properties": {
+        "starting_nav_micro": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Starting account capital (NAV at bar 0) in micro-quote units. Part of the frozen replay input: ledger bar-0 NAV and metrics net_return_1e8 are seeded by it, so it MUST be pinned here (DET-1/DET-3). V1 CLI default: 10000000000 (10,000 USDT)."
+        },
+        "leverage_cap_gross_lev_1e4": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Account-wide gross leverage cap (sum of |per-market target|) in 1e-4 units, enforced as the lev-gross RiskCheck gate. Protocol default 30000 (3x); recorded per run like turnover_cap_1e8 so every gate limit that appears in observation.risk.constraints exists in this hashed document (SAFE-1)."
+        },
+        "drawdown_kill_switch_1e8": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Episode peak-to-trough drawdown threshold in 1e-8 units at which the kill switch flattens all positions (SAFE-3). Protocol default 20000000 (20%); recorded per run so the drawdown-ks constraint limit is pinned in the replay input, matching turnover_cap_1e8's treatment."
+        },
+        "lookback_bars": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "Observation trade-bar lookback depth; null = use pack default_lookback.bars. The operator pays the token bill, so the operator's config wins."
+        },
+        "funding_prints": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Observation funding-print lookback; null = use pack default_lookback.funding_prints."
+        },
+        "response_deadline_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Per-attempt agent response budget (IC-6), echoed to the agent in observation.episode.response_deadline_ms. Default 120000. Lives in run config, not the agent manifest: it is an operator budget decision, not an agent attribute."
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Recorded seed for any permitted randomness (V1 engine uses none; the field exists so any future seeded generator is recorded, DET-4)."
+        },
+        "cost_profiles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "description": "Cost profile name; must exist in the pack's cost_profile_multipliers_1e4."},
+          "description": "Cost profiles simulated and stored. V1: ['primary','stress_2x'] - both mandatory so no headline can exist only under the optimistic profile (MATH-5)."
+        },
+        "turnover_cap_1e8": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Episode turnover cap (cumulative traded notional / starting NAV, 1e-8 units); null = uncapped (no turnover constraint row appears in observations)."
+        }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "arch", "python"],
+      "description": "Informational host provenance; explicitly OUTSIDE the determinism domain - results must not depend on it (DET-3).",
+      "properties": {
+        "os": {"type": "string", "description": "Operating system, e.g. 'linux', 'darwin'."},
+        "arch": {"type": "string", "description": "CPU architecture, e.g. 'arm64', 'x86_64'."},
+        "python": {"type": "string", "description": "Python version string."}
+      }
+    },
+    "ext": {
+      "type": "object",
+      "description": "Sanctioned extension point (see VERSIONING.md). Hashed as-is; values are constrained by schema to JCS-safe types with no fractional numbers ($defs/ext_value).",
+      "additionalProperties": {
+        "$ref": "#/$defs/ext_value"
+      }
+    }
+  },
+  "$defs": {
+    "ext_value": {
+      "description": "JCS-safe extension value (DET-2): null, boolean, string, integer within the I-JSON exact range +/-(2^53-1), or arrays/objects of the same, recursively. A JSON number with a fractional part (e.g. 1.5) is schema-INVALID here - ext contents ride into hashed documents as-is, and no fractional number may enter a hashed document. Boundary note: JSON Schema's 'integer' type admits a mathematically-integral literal such as 1.0; the CI instance scan (float-rejecting JSON parse, see VERSIONING.md) closes that remaining lexical gap.",
+      "anyOf": [
+        {"type": "null", "description": "JSON null."},
+        {"type": "boolean", "description": "JSON boolean."},
+        {"type": "string", "description": "JSON string (decimal values ride as strings, e.g. '0.7')."},
+        {"type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991, "description": "Integer within the I-JSON exact range (JCS round-trips it byte-identically)."},
+        {"type": "array", "items": {"$ref": "#/$defs/ext_value"}, "description": "Array of JCS-safe values."},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/ext_value"}, "description": "Object whose values are all JCS-safe."}
+      ]
+    }
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "schema": "pack_manifest/v1",
+  "pack_id": "covid-2020",
+  "content_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+  "venue": "binance-um",
+  "window": {
+    "start_ts": 1580515200000,
+    "end_ts": 1588291200000
+  },
+  "bar_intervals_ms": [14400000],
+  "decision_bar_ms": 14400000,
+  "warmup_bars": 64,
+  "markets": {
+    "BTC": {
+      "instrument": "binance-um:BTCUSDT",
+      "base_asset": "BTC",
+      "quote_asset": "USDT",
+      "tick_size_micro": 100000,
+      "qty_step_base_1e8": 100000,
+      "min_notional_micro": 10000000,
+      "leverage_cap_lev_1e4": 30000,
+      "margin": {
+        "tiers": [
+          {
+            "notional_cap_micro": 9007199254740991,
+            "initial_rate_1e8": 33333334,
+            "maintenance_rate_1e8": 16666667
+          }
+        ],
+        "liquidation_penalty_1e8": 500000
+      },
+      "funding": {
+        "interval_ms": 28800000,
+        "settlement_offsets_ms": [0, 28800000, 57600000],
+        "cap_1e8": 300000,
+        "floor_1e8": -300000
+      },
+      "fees": {
+        "maker_rate_1e8": 20000,
+        "taker_rate_1e8": 40000
+      },
+      "execution": {
+        "half_spread_1e8": 50000,
+        "impact_model": "sqrt",
+        "impact_coeff_1e8": 30000,
+        "participation_cap_1e8": 1000000,
+        "cost_profile_multipliers_1e4": {
+          "primary": 10000,
+          "stress_2x": 20000
+        }
+      },
+      "calibration_note": "half_spread and impact_coeff calibrated on the 2019-H2 evolution window order-book snapshots; method documented in docs/calibration.md. Never observable by the agent."
+    }
+  },
+  "files": [
+    {
+      "path": "bars_4h.jsonl",
+      "role": "trade",
+      "market": "BTC",
+      "interval_ms": 14400000,
+      "row_schema": "bar_row/v1",
+      "sha256": "sha256:2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+      "bytes": 104857,
+      "records": 540,
+      "upstream": [
+        {
+          "url": "https://data.binance.vision/data/futures/um/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-02.zip",
+          "sha256": "sha256:3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c"
+        }
+      ]
+    },
+    {
+      "path": "mark_4h.jsonl",
+      "role": "mark",
+      "market": "BTC",
+      "interval_ms": 14400000,
+      "row_schema": "bar_row/v1",
+      "sha256": "sha256:4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d",
+      "bytes": 98304,
+      "records": 540,
+      "upstream": [
+        {
+          "url": "https://data.binance.vision/data/futures/um/monthly/markPriceKlines/BTCUSDT/4h/BTCUSDT-4h-2020-02.zip",
+          "sha256": "sha256:5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e"
+        }
+      ]
+    },
+    {
+      "path": "index_4h.jsonl",
+      "role": "index",
+      "market": "BTC",
+      "interval_ms": 14400000,
+      "row_schema": "bar_row/v1",
+      "sha256": "sha256:6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f",
+      "bytes": 98304,
+      "records": 540,
+      "upstream": [
+        {
+          "url": "https://data.binance.vision/data/futures/um/monthly/indexPriceKlines/BTCUSDT/4h/BTCUSDT-4h-2020-02.zip",
+          "sha256": "sha256:7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a"
+        }
+      ]
+    },
+    {
+      "path": "funding.jsonl",
+      "role": "funding",
+      "market": "BTC",
+      "interval_ms": 0,
+      "row_schema": "funding_row/v1",
+      "sha256": "sha256:8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b",
+      "bytes": 16384,
+      "records": 270,
+      "upstream": [
+        {
+          "url": "https://data.binance.vision/data/futures/um/monthly/fundingRate/BTCUSDT/BTCUSDT-fundingRate-2020-02.zip",
+          "sha256": "sha256:9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c"
+        }
+      ]
+    }
+  ],
+  "default_lookback": {
+    "bars": 64,
+    "funding_prints": 6
+  },
+  "regime_description": "February-April 2020: the COVID crash and aftermath. A -50% single-day move on 2020-03-12/13, funding pinned at the -0.30% cap, extreme mark/trade divergence, then a sharp V-recovery. Survival-stress scenario; never serialized into observations.",
+  "claim_label": "survival-stress",
+  "created_by_version": "0.1.0"
+}

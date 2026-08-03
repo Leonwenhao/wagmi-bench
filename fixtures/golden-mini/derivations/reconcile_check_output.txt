@@ -1,0 +1,161 @@
+== ledger discrepancies vs reconciled truth ==
+  A variant bar5 min_intrabar_dist_to_liq_1e8: A=-9145606 reconciled=None
+  B main bar1 liq_px_ticks: B=600300 reconciled=600301
+  B main bar1 distance_to_liq_1e8: B=40029970 reconciled=40029870
+  B main bar1 min_intrabar_dist_to_liq_1e8: B=39789368 reconciled=39789267
+  B main bar2 liq_px_ticks: B=600300 reconciled=600301
+  B main bar2 distance_to_liq_1e8: B=39970000 reconciled=39969900
+  B main bar2 min_intrabar_dist_to_liq_1e8: B=39909909 reconciled=39909809
+  B main bar3 liq_px_ticks: B=720360 reconciled=720361
+  B main bar3 distance_to_liq_1e8: B=27819639 reconciled=27819539
+  B main bar3 min_intrabar_dist_to_liq_1e8: B=27674698 reconciled=27674598
+  B main bar4 liq_px_ticks: B=720360 reconciled=720361
+  B main bar4 distance_to_liq_1e8: B=27674698 reconciled=27674598
+  B main bar4 min_intrabar_dist_to_liq_1e8: B=27529175 reconciled=27529074
+  B main bar5 liq_px_ticks: B=720360 reconciled=720361
+  B main bar5 distance_to_liq_1e8: B=24172631 reconciled=24172526
+  B main bar5 min_intrabar_dist_to_liq_1e8: B=3307382 reconciled=3307248
+  B main bar6 liq_px_ticks: B=720360 reconciled=720361
+  B main bar6 distance_to_liq_1e8: B=24648535 reconciled=24648430
+  B main bar6 min_intrabar_dist_to_liq_1e8: B=23365957 reconciled=23365851
+  B main bar7 distance_to_liq_1e8: B=None reconciled=100000000
+  B main bar7 min_intrabar_dist_to_liq_1e8: B=None reconciled=100000000
+  B main bar8 distance_to_liq_1e8: B=None reconciled=100000000
+  B main bar8 min_intrabar_dist_to_liq_1e8: B=None reconciled=100000000
+  B main bar9 position_base_1e8: B=-140400000 reconciled=-140000000
+  B main bar9 cash_usdt_micro: B=8800459024 reconciled=8800476007
+  B main bar9 fees_paid_usdt_micro: B=26155466 reconciled=26138483
+  B main bar9 unrealized_pnl_usdt_micro: B=49533120 reconciled=49392000
+  B main bar9 nav_usdt_micro: B=8849992144 reconciled=8849868007
+  B main bar9 margin_used_usdt_micro: B=8831422080 reconciled=8806261333
+  B main bar9 liq_px_ticks: B=1347898 reconciled=1347897
+  B main bar9 distance_to_liq_1e8: B=43393404 reconciled=43393297
+  B main bar9 min_intrabar_dist_to_liq_1e8: B=42183333 reconciled=42183227
+  B main bar10 position_base_1e8: B=-140400000 reconciled=-140000000
+  B main bar10 cash_usdt_micro: B=8800459024 reconciled=8800476007
+  B main bar10 fees_paid_usdt_micro: B=26155466 reconciled=26138483
+  B main bar10 unrealized_pnl_usdt_micro: B=133773120 reconciled=133392000
+  B main bar10 nav_usdt_micro: B=8934232144 reconciled=8933868007
+  B main bar10 margin_used_usdt_micro: B=8831422080 reconciled=8806261333
+  B main bar10 liq_px_ticks: B=1347898 reconciled=1347897
+  B main bar10 distance_to_liq_1e8: B=44314561 reconciled=44314453
+  B main bar10 min_intrabar_dist_to_liq_1e8: B=42785805 reconciled=42785699
+  B main bar11 position_base_1e8: B=-140400000 reconciled=-140000000
+  B main bar11 cash_usdt_micro: B=8800459024 reconciled=8800476007
+  B main bar11 fees_paid_usdt_micro: B=26155466 reconciled=26138483
+  B main bar11 unrealized_pnl_usdt_micro: B=189933120 reconciled=189392000
+  B main bar11 nav_usdt_micro: B=8990392144 reconciled=8989868007
+  B main bar11 margin_used_usdt_micro: B=8831422080 reconciled=8806261333
+  B main bar11 liq_px_ticks: B=1347898 reconciled=1347897
+  B main bar11 distance_to_liq_1e8: B=44935268 reconciled=44935161
+  B main bar11 min_intrabar_dist_to_liq_1e8: B=43699147 reconciled=43699040
+  B main bar12 position_base_1e8: B=-140400000 reconciled=-140000000
+  B main bar12 cash_usdt_micro: B=8800459024 reconciled=8800476007
+  B main bar12 fees_paid_usdt_micro: B=26155466 reconciled=26138483
+  B main bar12 unrealized_pnl_usdt_micro: B=246093120 reconciled=245392000
+  B main bar12 nav_usdt_micro: B=9046552144 reconciled=9045868007
+  B main bar12 margin_used_usdt_micro: B=8831422080 reconciled=8806261333
+  B main bar12 liq_px_ticks: B=1347898 reconciled=1347897
+  B main bar12 distance_to_liq_1e8: B=45561339 reconciled=45561231
+  B main bar12 min_intrabar_dist_to_liq_1e8: B=44314561 reconciled=44314453
+  B main bar13 cash_usdt_micro: B=9034198230 reconciled=9033549290
+  B main bar13 fees_paid_usdt_micro: B=32008860 reconciled=31975200
+  B main bar13 realized_pnl_usdt_micro: B=-907285180 reconciled=-907967780
+  B main bar13 nav_usdt_micro: B=9034198230 reconciled=9033549290
+  B variant bar1 liq_px_ticks: B=600300 reconciled=600301
+  B variant bar1 distance_to_liq_1e8: B=40029970 reconciled=40029870
+  B variant bar1 min_intrabar_dist_to_liq_1e8: B=39789368 reconciled=39789267
+  B variant bar2 liq_px_ticks: B=600300 reconciled=600301
+  B variant bar2 distance_to_liq_1e8: B=39970000 reconciled=39969900
+  B variant bar2 min_intrabar_dist_to_liq_1e8: B=39909909 reconciled=39909809
+  B variant bar3 liq_px_ticks: B=720360 reconciled=720361
+  B variant bar3 distance_to_liq_1e8: B=27819639 reconciled=27819539
+  B variant bar3 min_intrabar_dist_to_liq_1e8: B=27674698 reconciled=27674598
+  B variant bar4 liq_px_ticks: B=720360 reconciled=720361
+  B variant bar4 distance_to_liq_1e8: B=27674698 reconciled=27674598
+  B variant bar4 min_intrabar_dist_to_liq_1e8: B=27529175 reconciled=27529074
+A ledger diffs: 1  B ledger diffs: 74
+== A-vs-B ledger discrepancy list (field level) ==
+   ('main', 1, 'distance_to_liq_1e8', 40029870, 40029970)
+   ('main', 1, 'liq_px_ticks', 600301, 600300)
+   ('main', 1, 'min_intrabar_dist_to_liq_1e8', 39789267, 39789368)
+   ('main', 2, 'distance_to_liq_1e8', 39969900, 39970000)
+   ('main', 2, 'liq_px_ticks', 600301, 600300)
+   ('main', 2, 'min_intrabar_dist_to_liq_1e8', 39909809, 39909909)
+   ('main', 3, 'distance_to_liq_1e8', 27819539, 27819639)
+   ('main', 3, 'liq_px_ticks', 720361, 720360)
+   ('main', 3, 'min_intrabar_dist_to_liq_1e8', 27674598, 27674698)
+   ('main', 4, 'distance_to_liq_1e8', 27674598, 27674698)
+   ('main', 4, 'liq_px_ticks', 720361, 720360)
+   ('main', 4, 'min_intrabar_dist_to_liq_1e8', 27529074, 27529175)
+   ('main', 5, 'distance_to_liq_1e8', 24172526, 24172631)
+   ('main', 5, 'liq_px_ticks', 720361, 720360)
+   ('main', 5, 'min_intrabar_dist_to_liq_1e8', 3307248, 3307382)
+   ('main', 6, 'distance_to_liq_1e8', 24648430, 24648535)
+   ('main', 6, 'liq_px_ticks', 720361, 720360)
+   ('main', 6, 'min_intrabar_dist_to_liq_1e8', 23365851, 23365957)
+   ('main', 7, 'distance_to_liq_1e8', 100000000, None)
+   ('main', 7, 'min_intrabar_dist_to_liq_1e8', 100000000, None)
+   ('main', 8, 'distance_to_liq_1e8', 100000000, None)
+   ('main', 8, 'min_intrabar_dist_to_liq_1e8', 100000000, None)
+   ('main', 9, 'position', -140000000, -140400000)
+   ('main', 9, 'cash_usdt_micro', 8800476007, 8800459024)
+   ('main', 9, 'distance_to_liq_1e8', 43393297, 43393404)
+   ('main', 9, 'fees_paid_usdt_micro', 26138483, 26155466)
+   ('main', 9, 'liq_px_ticks', 1347897, 1347898)
+   ('main', 9, 'margin_used_usdt_micro', 8806261333, 8831422080)
+   ('main', 9, 'min_intrabar_dist_to_liq_1e8', 42183227, 42183333)
+   ('main', 9, 'nav_usdt_micro', 8849868007, 8849992144)
+   ('main', 9, 'unrealized_pnl_usdt_micro', 49392000, 49533120)
+   ('main', 10, 'position', -140000000, -140400000)
+   ('main', 10, 'cash_usdt_micro', 8800476007, 8800459024)
+   ('main', 10, 'distance_to_liq_1e8', 44314453, 44314561)
+   ('main', 10, 'fees_paid_usdt_micro', 26138483, 26155466)
+   ('main', 10, 'liq_px_ticks', 1347897, 1347898)
+   ('main', 10, 'margin_used_usdt_micro', 8806261333, 8831422080)
+   ('main', 10, 'min_intrabar_dist_to_liq_1e8', 42785699, 42785805)
+   ('main', 10, 'nav_usdt_micro', 8933868007, 8934232144)
+   ('main', 10, 'unrealized_pnl_usdt_micro', 133392000, 133773120)
+   ('main', 11, 'position', -140000000, -140400000)
+   ('main', 11, 'cash_usdt_micro', 8800476007, 8800459024)
+   ('main', 11, 'distance_to_liq_1e8', 44935161, 44935268)
+   ('main', 11, 'fees_paid_usdt_micro', 26138483, 26155466)
+   ('main', 11, 'liq_px_ticks', 1347897, 1347898)
+   ('main', 11, 'margin_used_usdt_micro', 8806261333, 8831422080)
+   ('main', 11, 'min_intrabar_dist_to_liq_1e8', 43699040, 43699147)
+   ('main', 11, 'nav_usdt_micro', 8989868007, 8990392144)
+   ('main', 11, 'unrealized_pnl_usdt_micro', 189392000, 189933120)
+   ('main', 12, 'position', -140000000, -140400000)
+   ('main', 12, 'cash_usdt_micro', 8800476007, 8800459024)
+   ('main', 12, 'distance_to_liq_1e8', 45561231, 45561339)
+   ('main', 12, 'fees_paid_usdt_micro', 26138483, 26155466)
+   ('main', 12, 'liq_px_ticks', 1347897, 1347898)
+   ('main', 12, 'margin_used_usdt_micro', 8806261333, 8831422080)
+   ('main', 12, 'min_intrabar_dist_to_liq_1e8', 44314453, 44314561)
+   ('main', 12, 'nav_usdt_micro', 9045868007, 9046552144)
+   ('main', 12, 'unrealized_pnl_usdt_micro', 245392000, 246093120)
+   ('main', 13, 'cash_usdt_micro', 9033549290, 9034198230)
+   ('main', 13, 'fees_paid_usdt_micro', 31975200, 32008860)
+   ('main', 13, 'nav_usdt_micro', 9033549290, 9034198230)
+   ('main', 13, 'realized_pnl_usdt_micro', -907967780, -907285180)
+   ('variant', 1, 'distance_to_liq_1e8', 40029870, 40029970)
+   ('variant', 1, 'liq_px_ticks', 600301, 600300)
+   ('variant', 1, 'min_intrabar_dist_to_liq_1e8', 39789267, 39789368)
+   ('variant', 2, 'distance_to_liq_1e8', 39969900, 39970000)
+   ('variant', 2, 'liq_px_ticks', 600301, 600300)
+   ('variant', 2, 'min_intrabar_dist_to_liq_1e8', 39909809, 39909909)
+   ('variant', 3, 'distance_to_liq_1e8', 27819539, 27819639)
+   ('variant', 3, 'liq_px_ticks', 720361, 720360)
+   ('variant', 3, 'min_intrabar_dist_to_liq_1e8', 27674598, 27674698)
+   ('variant', 4, 'distance_to_liq_1e8', 27674598, 27674698)
+   ('variant', 4, 'liq_px_ticks', 720361, 720360)
+   ('variant', 4, 'min_intrabar_dist_to_liq_1e8', 27529074, 27529175)
+   ('variant', 5, 'min_intrabar_dist_to_liq_1e8', -9145606, None)
+A-vs-B ledger field discrepancies: 75
+== metrics ==
+main: {"schema": "golden_metrics/v1", "cost_profile": "primary", "final_nav_usdt_micro": 9033549290, "net_return_1e8": -9664508, "max_drawdown_1e8": 11727339, "max_drawdown_peak_nav_usdt_micro": 10000995500, "max_drawdown_trough_nav_usdt_micro": 8828144825, "max_drawdown_trough_bar_index": 5, "total_fees_usdt_micro": 31975200, "total_funding_usdt_micro": 26507730, "total_liq_penalty_usdt_micro": 0, "turnover_notional_usdt_micro": 71055996220, "turnover_ratio_1e8": 710559962, "kill_switch_triggered": false, "liquidations": 0, "missed_decisions": 6, "invalid_actions": 1, "blocked_actions": 1, "episode_end_reason": "completed"}
+variant: {"schema": "golden_metrics/v1", "cost_profile": "primary", "final_nav_usdt_micro": 2006344825, "net_return_1e8": -79936552, "max_drawdown_1e8": 79938548, "max_drawdown_peak_nav_usdt_micro": 10000995500, "max_drawdown_trough_nav_usdt_micro": 2006344825, "max_drawdown_trough_bar_index": 5, "total_fees_usdt_micro": 10355175, "total_funding_usdt_micro": 0, "total_liq_penalty_usdt_micro": 151800000, "turnover_notional_usdt_micro": 38191500000, "turnover_ratio_1e8": 381915000, "kill_switch_triggered": false, "liquidations": 1, "missed_decisions": 2, "invalid_actions": 1, "blocked_actions": 0, "episode_end_reason": "liquidated"}
+== invariants over written expected files ==
+  main: INV-1 cash conservation OK, INV-2 NAV attribution OK, INV-3 NAV=cash+unrealized OK, INV-4 metrics-from-ledger OK (14 rows)
+  variant-liquidation: INV-1 cash conservation OK, INV-2 NAV attribution OK, INV-3 NAV=cash+unrealized OK, INV-4 metrics-from-ledger OK (6 rows)
+ALL INVARIANTS: PASS

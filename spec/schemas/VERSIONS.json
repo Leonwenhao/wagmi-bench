@@ -1,0 +1,21 @@
+{
+  "schema": "spec_versions/v1",
+  "note": "Source-of-truth registry mapping every published schema major to its full semver (VERSIONING.md). bundle_manifest.spec_versions is copied from this file at run time; the DET-6 replay compatibility check compares against the bundle's recorded copy. Pre-freeze amendments edit v1 entries in place; post-freeze changes follow the migration procedure (new major = new entry, never a removal).",
+  "versions": {
+    "action/v1": "1.0.0",
+    "agent_manifest/v1": "1.0.0",
+    "bar_row/v1": "1.0.0",
+    "bundle_manifest/v1": "1.0.0",
+    "chain/v1": "1.0.0",
+    "decision_record/v1": "1.0.0",
+    "event/v1": "1.0.0",
+    "funding_row/v1": "1.0.0",
+    "ledger_row/v1": "1.0.0",
+    "metrics/v1": "1.0.0",
+    "observation/v1": "1.0.0",
+    "pack_manifest/v1": "1.0.0",
+    "redaction/v1": "1.0.0",
+    "runner_request/v1": "1.0.0",
+    "runner_response/v1": "1.0.0"
+  }
+}

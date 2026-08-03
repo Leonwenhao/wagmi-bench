@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/decision_record.v1.schema.json",
+  "title": "decision_record/v1",
+  "description": "The product: one legible per-turn audit record at decisions/NNNN.json (NNNN = zero-padded 4-digit turn index; every turn gets a record, INCLUDING missed/timeout turns, so the NNNN<->turn mapping is total and gap-free). It is a MATERIALIZED DERIVED VIEW over events.jsonl, assembled by a pure function of the event stream: every field must byte-equal its source event payloads (the replay verifier regenerates records from events and diffs; on conflict, events win). Deliberately denormalized: an auditor opens ONE file and reads the whole story - saw, said, meant, rules, happened, cost to hold, account after.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "turn", "bar_index", "ts", "saw", "said", "meant", "rules", "happened", "cost_to_hold", "account_after", "event_seq_range"],
+  "properties": {
+    "schema": {
+      "const": "decision_record/v1",
+      "description": "Schema name and major version of this document."
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run_[0-9a-f]{16}$",
+      "description": "Run this record belongs to (matches bundle_manifest.run_id)."
+    },
+    "turn": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Decision-turn index; equals the NNNN of this file's name."
+    },
+    "bar_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Decision bar observed (at its close) this turn."
+    },
+    "ts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Virtual clock at observation emission, REAL UTC epoch-milliseconds (bundle side; only observations are rebased)."
+    },
+    "saw": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observation_sha256", "observation_ref"],
+      "description": "WHAT THE AGENT SAW: content address of the exact canonical observation; full bytes stored in-bundle at the ref (SCH-5 'from stored data alone').",
+      "properties": {
+        "observation_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "SHA-256 of the JCS observation bytes; must equal ObservationEmitted.observation_sha256 and the hash of the stored file."
+        },
+        "observation_ref": {
+          "type": "string",
+          "description": "Bundle-relative path, e.g. 'observations/0007.json'."
+        }
+      }
+    },
+    "said": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempts"],
+      "description": "WHAT THE AGENT SAID: every attempt, verbatim via content address. Empty attempts array = no response at all (timeout/unreachable); the absence is itself evidence.",
+      "properties": {
+        "attempts": {
+          "type": "array",
+          "maxItems": 2,
+          "description": "One entry per IC-6 attempt, in order, including malformed ones.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["attempt", "raw_ref", "raw_sha256", "raw_bytes", "latency_ms", "http_status", "token_usage", "transport"],
+            "properties": {
+              "attempt": {"enum": [1, 2], "description": "Attempt number."},
+              "raw_ref": {"type": "string", "description": "Bundle-relative path of the verbatim response bytes, e.g. 'raw/0007-a1.txt'. Under the share redaction profile the file may be absent (listed in redaction.json); the hash still verifies what was said."},
+              "raw_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "SHA-256 of the verbatim response bytes."},
+              "raw_bytes": {"type": "integer", "minimum": 0, "description": "Byte length of the response."},
+              "latency_ms": {"type": "integer", "minimum": 0, "description": "Harness-measured wall latency for this attempt (recorded, never consumed)."},
+              "http_status": {"type": ["integer", "null"], "description": "HTTP status; null for in-process adapters."},
+              "token_usage": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["input_tokens", "output_tokens"],
+                "description": "Agent-reported token usage; null when unavailable.",
+                "properties": {
+                  "input_tokens": {"type": "integer", "minimum": 0, "description": "Reported input tokens."},
+                  "output_tokens": {"type": "integer", "minimum": 0, "description": "Reported output tokens."}
+                }
+              },
+              "transport": {"enum": ["http", "in_process"], "description": "Adapter used."}
+            }
+          }
+        }
+      }
+    },
+    "meant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "action", "rejected"],
+      "description": "WHAT THE AGENT MEANT: exactly one of action/rejected is non-null, discriminated by status. The cross-field coupling is SCHEMA-ENFORCED by the allOf/if/then pair below (a record with status 'parsed' and action null is schema-invalid, not merely doc-invalid). Missed decisions (timeout/agent_error) are status 'rejected' with the corresponding reason (SAFE-4).",
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "parsed"}}, "required": ["status"]},
+          "then": {"properties": {"action": {"type": "object"}, "rejected": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "rejected"}}, "required": ["status"]},
+          "then": {"properties": {"action": {"type": "null"}, "rejected": {"type": "object"}}}
+        }
+      ],
+      "properties": {
+        "status": {
+          "enum": ["parsed", "rejected"],
+          "description": "parsed => action non-null, rejected null; rejected => the reverse."
+        },
+        "action": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["intent_kind", "from_attempt"],
+          "allOf": [
+            {
+              "if": {"properties": {"intent_kind": {"const": "leverage_target"}}},
+              "then": {"required": ["target_lev_1e4", "max_slippage_bps"]}
+            }
+          ],
+          "description": "Canonical parsed action (mirror of ActionParsed payload), or null. The leverage payload (target_lev_1e4, max_slippage_bps) is conditionally required behind intent_kind (allOf/if/then), mirroring the ActionParsed seam: intent_kind is required whenever action is non-null and its sole v1 member is 'leverage_target', so every v1 record still carries the full leverage vector; a future commerce intent kind is a MINOR bump (new enum member + own conditional branch). The keywords are vacuous when action is null (required/properties constrain objects only), so the null branch is unaffected.",
+          "properties": {
+            "intent_kind": {
+              "enum": ["leverage_target"],
+              "description": "Canonical intent discriminator, mirror of ActionParsed.intent_kind (the IC-3 seam); constant 'leverage_target' in v1, additive-tolerant (VERSIONING.md) so a future commerce intent kind is a minor bump."
+            },
+            "target_lev_1e4": {
+              "type": "object",
+              "minProperties": 1,
+              "propertyNames": {"pattern": "^[A-Z0-9]{1,12}$"},
+              "additionalProperties": {"type": "integer", "description": "Signed target leverage in 1e-4 units."},
+              "description": "Market alias -> signed target leverage, 1e-4 units."
+            },
+            "max_slippage_bps": {"type": ["integer", "null"], "minimum": 0, "maximum": 10000, "description": "Slippage tolerance in bps, or null."},
+            "from_attempt": {"enum": [1, 2], "description": "Attempt that produced the accepted action."}
+          }
+        },
+        "rejected": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["reason", "detail", "validator_error", "attempts"],
+          "description": "Mirror of the ActionRejected payload, or null.",
+          "properties": {
+            "reason": {
+              "enum": ["oversize", "invalid_json", "schema_invalid", "unknown_schema", "unknown_field", "unknown_market", "invalid_target_format", "float_target", "target_out_of_range", "invalid_slippage", "timeout", "agent_error"],
+              "description": "Final failure reason from the IC-3 validation table."
+            },
+            "detail": {"type": "string", "description": "Deterministic diagnostic."},
+            "validator_error": {"type": ["string", "null"], "description": "Error text fed back on the retry, or null if none occurred."},
+            "attempts": {"enum": [1, 2], "description": "Attempts made."}
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "description": "WHICH RULES RAN: every constraint verdict this turn, pass AND block (mirrors of RiskCheck payloads, in emission order). Empty exactly when no action was parsed (gates run only on parsed intents).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["constraint_id", "constraint_type", "scope", "observed", "limit", "unit", "verdict"],
+        "properties": {
+          "constraint_id": {"type": "string", "description": "Constraint evaluated."},
+          "constraint_type": {"enum": ["leverage_cap_gross", "leverage_cap_market", "turnover_cap", "drawdown_kill_switch"], "description": "Constraint semantics."},
+          "scope": {"type": "string", "description": "Market alias or 'account'."},
+          "observed": {"type": "integer", "description": "Value checked, in `unit` units."},
+          "limit": {"type": "integer", "description": "Limit in force, in `unit` units."},
+          "unit": {"type": "string", "description": "Unit of observed/limit."},
+          "verdict": {"enum": ["pass", "block"], "description": "The conformance verdict. This enum is on the additive-tolerant list (VERSIONING.md): a future conformance outcome (e.g. step_up / requires_user_authorization) arrives as a minor bump, not a major. observed/limit are numeric-only in v1; a non-scalar conformance value (e.g. a matched-set member) arrives as an optional additive field (minor bump), documented in IC-4."}
+        }
+      }
+    },
+    "happened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fills", "cancels", "liquidation", "post_kill_switch_attempt"],
+      "description": "WHAT EXECUTED: verbatim mirrors of this turn's OrderFilled/OrderCancelled/LiquidationTriggered/PostKillSwitchAttempt payloads. All empty/null on missed, rejected, or fully-blocked turns.",
+      "properties": {
+        "fills": {
+          "type": "array",
+          "items": {"$ref": "https://tradeevolve.dev/spec/schemas/event.v1.schema.json#/$defs/OrderFilled"},
+          "description": "OrderFilled payloads, in seq order, with full price decomposition."
+        },
+        "cancels": {
+          "type": "array",
+          "items": {"$ref": "https://tradeevolve.dev/spec/schemas/event.v1.schema.json#/$defs/OrderCancelled"},
+          "description": "OrderCancelled payloads, in seq order."
+        },
+        "liquidation": {
+          "anyOf": [
+            {"type": "null"},
+            {"$ref": "https://tradeevolve.dev/spec/schemas/event.v1.schema.json#/$defs/LiquidationTriggered"}
+          ],
+          "description": "LiquidationTriggered payload if this turn's holding bar liquidated the position; else null."
+        },
+        "post_kill_switch_attempt": {
+          "anyOf": [
+            {"type": "null"},
+            {"$ref": "https://tradeevolve.dev/spec/schemas/event.v1.schema.json#/$defs/PostKillSwitchAttempt"}
+          ],
+          "description": "PostKillSwitchAttempt payload if a non-flat target arrived after the kill switch; else null."
+        }
+      }
+    },
+    "cost_to_hold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["funding", "margin_after"],
+      "description": "WHAT HOLDING COST over this turn's bar: funding flows plus margin state after the bar. The carrying-cost block (funding today; storage/subscription/interest in a commerce profile tomorrow).",
+      "properties": {
+        "funding": {
+          "type": "array",
+          "items": {"$ref": "https://tradeevolve.dev/spec/schemas/event.v1.schema.json#/$defs/FundingApplied"},
+          "description": "FundingApplied payloads for settlements crossed during this turn's holding bar, in seq order."
+        },
+        "margin_after": {
+          "anyOf": [
+            {"type": "null"},
+            {"$ref": "https://tradeevolve.dev/spec/schemas/event.v1.schema.json#/$defs/MarginUpdate"}
+          ],
+          "description": "MarginUpdate payload at the holding bar's close (includes min intra-bar distance-to-liquidation, the wick near-miss); null when flat all bar."
+        }
+      }
+    },
+    "account_after": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nav_micro", "cash_micro", "realized_pnl_micro", "d_nav_micro", "d_price_pnl_micro", "d_funding_micro", "d_fees_micro", "d_liq_penalty_micro"],
+      "description": "Account state after the turn's bar, with the delta-NAV attribution terms stored (not derived) so 'why did NAV drop this bar' is answered inline and the MATH-2 identity is checkable by a from-scratch script: d_nav == d_price_pnl + d_funding + d_fees + d_liq_penalty, exactly, in integer micro-units.",
+      "properties": {
+        "nav_micro": {"type": "integer", "description": "NAV after the bar, micro-quote."},
+        "cash_micro": {"type": "integer", "description": "Free cash after the bar, micro-quote."},
+        "realized_pnl_micro": {"type": "integer", "description": "Cumulative realized PnL, micro-quote."},
+        "d_nav_micro": {"type": "integer", "description": "NAV change over this turn's bar, micro-quote. INVARIANT (CI, MATH-2): equals the sum of the four attribution terms below."},
+        "d_price_pnl_micro": {"type": "integer", "description": "Mark-to-market price PnL component, micro-quote."},
+        "d_funding_micro": {"type": "integer", "description": "Funding component, micro-quote (negative = paid)."},
+        "d_fees_micro": {"type": "integer", "description": "Fee component, micro-quote (always <= 0)."},
+        "d_liq_penalty_micro": {"type": "integer", "description": "Liquidation penalty component, micro-quote (0 except the terminal bar)."}
+      }
+    },
+    "event_seq_range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first_seq", "last_seq"],
+      "description": "The contiguous events.jsonl seq range this record was derived from - the denormalization is auditable back to the primary stream.",
+      "properties": {
+        "first_seq": {"type": "integer", "minimum": 0, "description": "First event seq of this turn (its ObservationEmitted)."},
+        "last_seq": {"type": "integer", "minimum": 0, "description": "Last event seq of this turn."}
+      }
+    },
+    "ext": {
+      "type": "object",
+      "description": "Sanctioned extension point (see VERSIONING.md). Recorder-ignored, hashed as-is; values are constrained by schema to JCS-safe types with no fractional numbers ($defs/ext_value).",
+      "additionalProperties": {
+        "$ref": "#/$defs/ext_value"
+      }
+    }
+  },
+  "$defs": {
+    "ext_value": {
+      "description": "JCS-safe extension value (DET-2): null, boolean, string, integer within the I-JSON exact range +/-(2^53-1), or arrays/objects of the same, recursively. A JSON number with a fractional part (e.g. 1.5) is schema-INVALID here - ext contents ride into hashed documents as-is, and no fractional number may enter a hashed document. Boundary note: JSON Schema's 'integer' type admits a mathematically-integral literal such as 1.0; the CI instance scan (float-rejecting JSON parse, see VERSIONING.md) closes that remaining lexical gap.",
+      "anyOf": [
+        {"type": "null", "description": "JSON null."},
+        {"type": "boolean", "description": "JSON boolean."},
+        {"type": "string", "description": "JSON string (decimal values ride as strings, e.g. '0.7')."},
+        {"type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991, "description": "Integer within the I-JSON exact range (JCS round-trips it byte-identically)."},
+        {"type": "array", "items": {"$ref": "#/$defs/ext_value"}, "description": "Array of JCS-safe values."},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/ext_value"}, "description": "Object whose values are all JCS-safe."}
+      ]
+    }
+  }
+}

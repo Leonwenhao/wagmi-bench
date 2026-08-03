@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/bar_row.v1.schema.json",
+  "title": "bar_row/v1",
+  "description": "One OHLCV bar as a JSONL line inside a pack series file. The same row shape serves all three never-conflated price series (trade, mark, index); the series role is declared file-level in pack_manifest.files[].role, so rows carry no per-row schema field (bulk-data exception to the self-description rule; see VERSIONING.md). All prices are integer ticks (multiply by the market's tick_size_micro for micro-quote units). All timestamps are real UTC epoch-milliseconds in pack files; the observation builder rebases them before an agent ever sees them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ts", "available_at", "o", "h", "l", "c", "v_base_1e8"],
+  "properties": {
+    "ts": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "Bar OPEN time, UTC epoch-milliseconds."
+    },
+    "available_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "Instant this row becomes observable = bar CLOSE time (ts + bar interval), UTC epoch-milliseconds. The point-in-time isolation key: an observation at virtual clock T may include only rows with available_at <= T (ISO-1). Stored per-row (not derived) so leakage property tests and the poison-row fixture operate on stored bytes."
+    },
+    "o": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Open price in integer ticks (tick size in the pack manifest's market descriptor, tick_size_micro)."
+    },
+    "h": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "High price in integer ticks. On the mark series this drives the intra-bar liquidation check for shorts (MATH-3)."
+    },
+    "l": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Low price in integer ticks. On the mark series this drives the intra-bar liquidation check for longs (MATH-3)."
+    },
+    "c": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Close price in integer ticks."
+    },
+    "v_base_1e8": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Bar volume in 1e-8 base-asset units (e.g. satoshi for BTC). Feeds the participation cap on the trade series; 0 is permitted and expected on mark/index series (one row shape, three streams, one parser)."
+    }
+  }
+}

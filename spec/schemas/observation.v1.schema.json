@@ -1,0 +1,325 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/observation.v1.schema.json",
+  "title": "observation/v1",
+  "description": "What the agent sees at one decision turn (IC-2). This is the ONLY anonymized surface in the system (ISO-3/ISO-4): every timestamp is REBASED epoch-ms (real time minus the largest whole-week multiple <= the pack window start, recorded operator-side in bundle_manifest.time_rebase_offset_ms and never observable by the agent). Week-aligned rebasing preserves time-of-day (funding settles at rebased 00/08/16) and weekday, but destroys the calendar date. Every row satisfies available_at <= clock_ts (ISO-1, property-tested against the pack). This object is JCS-canonicalized, SHA-256-hashed (ObservationEmitted.observation_sha256) and stored in full at observations/NNNN.json. NO ext extension point on this schema: the isolation surface is deliberately closed (any extension could carry dates or scenario names).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "episode", "clock_ts", "markets", "position", "account", "risk"],
+  "properties": {
+    "schema": {
+      "const": "observation/v1",
+      "description": "Schema name and major version of this document."
+    },
+    "episode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_id", "turn", "bar_index", "bars_total", "bars_remaining", "decision_bar_ms", "response_deadline_ms"],
+      "description": "Episode identity and progress. No dates, no event names, no venue names anywhere.",
+      "properties": {
+        "episode_id": {
+          "type": "string",
+          "pattern": "^ep_[0-9a-f]{16}$",
+          "description": "Opaque episode identifier, minted randomly by the harness per run and recorded in the bundle manifest. The ONLY episode identity the agent ever sees; derived from nothing scenario-related (ISO-4)."
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0-based decision-turn index; equals the decisions/NNNN.json index. Increments every turn including missed ones."
+        },
+        "bar_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0-based index of the most recently CLOSED decision bar (whose close this observation is taken at), counted from the first post-warmup bar. Equals turn in V1 (one decision per decision bar)."
+        },
+        "bars_total": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total decision bars in the episode; with bars_remaining lets the agent reason about horizon without dates."
+        },
+        "bars_remaining": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Decision bars remaining after this one."
+        },
+        "decision_bar_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Decision bar duration in milliseconds (14400000 = 4h, 3600000 = 1h). A duration, not an instant: reveals cadence, never era."
+        },
+        "response_deadline_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Per-attempt response budget the harness enforces (IC-6). Told to the agent as basic procedural fairness, and so timeout evidence is unambiguous."
+        }
+      }
+    },
+    "clock_ts": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99999999999,
+      "description": "Virtual clock at this decision point, REBASED epoch-milliseconds (< 1e11 by construction; real epoch values are ~1.7e12, which the CI observation scan uses as a leak detector). Every row in this observation satisfies available_at <= clock_ts (ISO-1)."
+    },
+    "markets": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Map: market alias -> market view. V1: exactly {'BTC': ...}. A scrubbed subset of the pack descriptor: units, caps, fees, funding schedule - no venue name, no venue symbols (ISO-3).",
+      "propertyNames": {
+        "pattern": "^[A-Z0-9]{1,12}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/market_view"
+      }
+    },
+    "position": {
+      "type": "object",
+      "description": "Map: market alias -> current position state (post the previous bar's settlement). Every tradable market appears, flat markets with qty 0 and null price fields (explicit is auditable).",
+      "propertyNames": {
+        "pattern": "^[A-Z0-9]{1,12}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "One market's current position state as shown to the agent (the value of each position map entry).",
+        "additionalProperties": false,
+        "required": ["qty_base_1e8", "entry_px_ticks", "upnl_micro", "margin_micro", "liq_px_ticks", "dist_to_liq_1e8"],
+        "properties": {
+          "qty_base_1e8": {
+            "type": "integer",
+            "description": "Signed position size in 1e-8 base units; positive = long, 0 = flat."
+          },
+          "entry_px_ticks": {
+            "type": ["integer", "null"],
+            "description": "Volume-weighted entry price in ticks; null when flat (explicit null, never absent)."
+          },
+          "upnl_micro": {
+            "type": "integer",
+            "description": "Unrealized PnL at the current MARK price (never trade price), micro-quote. ISO-1 single-mark invariant (IC-2 CI scan item 4): MUST be computed from the same provenance-checked mark row whose close populates markets.<alias>.last_mark_px_ticks - this scalar has no in-band available_at and an agent holding a known position can solve the mark back out of it, so a future mark here IS a price leak; CI recomputes it from in-band fields and requires exact equality."
+          },
+          "margin_micro": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Isolated margin allocated to this position, micro-quote."
+          },
+          "liq_px_ticks": {
+            "type": ["integer", "null"],
+            "description": "Mark price at which liquidation triggers, in ticks; null when flat."
+          },
+          "dist_to_liq_1e8": {
+            "type": ["integer", "null"],
+            "description": "|mark - liq_px| / mark as a 1e-8 fraction (floor division) - the trader's single most important survival number; null when flat. Mark-derived: bound by the same ISO-1 single-mark invariant as upnl_micro (computed from the mark behind last_mark_px_ticks; CI-recomputed)."
+          }
+        }
+      }
+    },
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nav_micro", "cash_micro", "realized_pnl_micro"],
+      "description": "Account state in micro-quote units.",
+      "properties": {
+        "nav_micro": {
+          "type": "integer",
+          "description": "Net asset value = cash + sum of position margin + unrealized PnL, micro-quote. Includes uPnL and is therefore mark-derived: bound by the ISO-1 single-mark invariant (IC-2 CI scan item 4) - computed from the same provenance-checked mark behind last_mark_px_ticks, CI-recomputed from in-band fields."
+        },
+        "cash_micro": {
+          "type": "integer",
+          "description": "Free collateral not allocated to margin, micro-quote."
+        },
+        "realized_pnl_micro": {
+          "type": "integer",
+          "description": "Cumulative realized PnL since episode start (price PnL + funding + fees + penalties), micro-quote."
+        }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["constraints", "kill_switch_active"],
+      "description": "The active constraint mandate: every limit that will be evaluated against this turn's action, with current usage. Structurally an AP2-style mandate (id + type + scope + limit + used + unit). Commerce extensibility, stated precisely (DECISIONS #5): SCALAR-budget constraint types (e.g. spend_cap - integer limit/used in `unit`) arrive as new rows via a minor `type` vocabulary bump with zero shape change; SET/EQUALITY constraint types (e.g. merchant_allowlist) additionally need an optional value-set field on the constraint row - a minor ADDITIVE bump under the versioning policy, but a schema change, not just a new row.",
+      "properties": {
+        "constraints": {
+          "type": "array",
+          "minItems": 1,
+          "description": "One row per active constraint. Every RiskCheck event references a constraint_id from this list.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["constraint_id", "type", "scope", "limit", "used", "unit"],
+            "properties": {
+              "constraint_id": {
+                "type": "string",
+                "description": "Stable identifier referenced by RiskCheck verdicts, e.g. 'lev-gross', 'lev-BTC', 'turnover', 'drawdown-ks'."
+              },
+              "type": {
+                "enum": ["leverage_cap_gross", "leverage_cap_market", "turnover_cap", "drawdown_kill_switch"],
+                "description": "Constraint semantics. Closed V1 enum, additive-tolerant (VERSIONING.md). Scalar commerce types (spend_cap) arrive by minor vocabulary bump alone; set/equality types (merchant_allowlist) also require an optional value-set row field (minor additive bump - see the risk block description)."
+              },
+              "scope": {
+                "type": "string",
+                "description": "Market alias this constraint binds, or 'account' for account-wide constraints."
+              },
+              "limit": {
+                "type": "integer",
+                "description": "Limit value, in `unit` units (e.g. 30000 lev_1e4 = 3x; 20000000 1e8 = 20% drawdown)."
+              },
+              "used": {
+                "type": "integer",
+                "description": "Current consumption in `unit` units (gross leverage in force, drawdown consumed from peak, turnover used). limit - used = remaining budget."
+              },
+              "unit": {
+                "type": "string",
+                "description": "Unit of limit/used: 'lev_1e4', '1e8', or 'micro'. Per-row units keep constraint rows domain-neutral."
+              }
+            }
+          }
+        },
+        "kill_switch_active": {
+          "type": "boolean",
+          "description": "True once the episode drawdown kill switch has fired; all further non-flat targets are blocked and recorded (PostKillSwitchAttempt), while observations continue (SAFE-3)."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "market_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tick_size_micro", "qty_step_base_1e8", "min_notional_micro", "taker_fee_rate_1e8", "leverage_cap_lev_1e4", "last_mark_px_ticks", "last_index_px_ticks", "bars", "funding"],
+      "description": "Per-market data the agent may legitimately know: microstructure constants, fee it pays, its leverage cap, trade-bar lookback, funding schedule and prints, plus current mark/index closes (so mark-vs-trade divergence, the thing that liquidates you, is visible without full extra series - token economy). ISO-4 honesty note: the venue constants exposed here (funding cap/floor, taker fee, tick size, qty step, min notional) are ERA-ACCURATE pack data and therefore fingerprint the historical era independently of price action (e.g. +/-300000 funding cap = 2020-era Binance). This is a documented, accepted disclosure - a real trader knows the venue's parameters - handled as a labeling matter (LABEL-2) exactly like era recognition from price action; it is NOT treated as a leak. leverage_cap is the protocol's cap, not a venue fingerprint.",
+      "properties": {
+        "tick_size_micro": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Price tick in micro-quote; interprets every *_ticks value in this observation."
+        },
+        "qty_step_base_1e8": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Quantity rounding step in 1e-8 base units; lets the agent predict fill rounding."
+        },
+        "min_notional_micro": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum order notional in micro-quote; smaller orders are cancelled - lets the agent predict min-notional cancels."
+        },
+        "taker_fee_rate_1e8": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Taker fee rate the agent pays on every fill, 1e-8 of notional."
+        },
+        "leverage_cap_lev_1e4": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "This market's leverage cap in 1e-4 units (30000 = 3x). Duplicated from risk.constraints for locality."
+        },
+        "last_mark_px_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Most recent MARK-price close in ticks. Mark is what liquidates positions; exposing its close lets the agent see mark-vs-trade divergence without a full second bar series."
+        },
+        "last_index_px_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Most recent INDEX-price close in ticks. Index prices funding notional."
+        },
+        "bars": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Trade-price bars at the decision interval only (no mixed 1h/4h in one observation), oldest first, length = effective lookback (run_config override, else pack default). Timestamps rebased.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ts", "available_at", "o", "h", "l", "c", "v_base_1e8"],
+            "properties": {
+              "ts": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 99999999999,
+                "description": "Bar open, REBASED epoch-ms."
+              },
+              "available_at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 99999999999,
+                "description": "When this row became observable (bar close), REBASED epoch-ms. Kept in-band so the ISO-1 property (available_at <= clock_ts) is checkable on the stored observation itself."
+              },
+              "o": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Open price, ticks."
+              },
+              "h": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "High price, ticks."
+              },
+              "l": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Low price, ticks."
+              },
+              "c": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Close price, ticks."
+              },
+              "v_base_1e8": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Bar volume in 1e-8 base units; lets a capacity-aware agent anticipate the participation cap."
+              }
+            }
+          }
+        },
+        "funding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["interval_ms", "next_settlement_ts", "cap_1e8", "floor_1e8", "prints"],
+          "description": "Funding schedule and recent prints - the cost-to-hold block, computable in-band by the agent.",
+          "properties": {
+            "interval_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Funding interval for THIS market in milliseconds (per-market data field, never a constant - MATH-4)."
+            },
+            "next_settlement_ts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 99999999999,
+              "description": "Next scheduled settlement, REBASED epoch-ms. Explicit so agents need not reverse-engineer the settlement clock."
+            },
+            "cap_1e8": {
+              "type": "integer",
+              "description": "Venue funding-rate cap in 1e-8 units (observable: a real trader knows the venue's cap)."
+            },
+            "floor_1e8": {
+              "type": "integer",
+              "description": "Venue funding-rate floor in 1e-8 units."
+            },
+            "prints": {
+              "type": "array",
+              "description": "Trailing settled funding prints, oldest first, count = effective funding lookback. Timestamps rebased; every ts <= clock_ts (a print is observable at settlement).",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["ts", "rate_1e8"],
+                "properties": {
+                  "ts": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 99999999999,
+                    "description": "Settlement time, REBASED epoch-ms."
+                  },
+                  "rate_1e8": {
+                    "type": "integer",
+                    "description": "Settled rate in 1e-8 units, era cap applied; positive = longs pay shorts."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

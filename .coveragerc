@@ -1,0 +1,18 @@
+[run]
+# ENG-2's denominator is production code in the two money-path packages.
+source =
+    core
+    spec
+branch = False
+relative_files = True
+
+[report]
+# Tests and the schema-document generator are verification tooling, not the
+# core/spec production denominator named by ENG-2.
+omit =
+    */tests/*
+    spec/tools/*
+fail_under = 90
+precision = 2
+show_missing = True
+skip_covered = True

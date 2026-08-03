@@ -1,0 +1,372 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/pack_manifest.v1.schema.json",
+  "title": "pack_manifest/v1",
+  "description": "Manifest of one scenario pack (IC-1). The only pack file committed to the repo (DATA-5): series files are built locally from pinned upstream archives and verified against the hashes recorded here. Packs are versioned by content hash, not counters. Everything here is operator/bundle-side; none of it (pack_id, regime_description, venue, real dates) is ever serialized into an observation (ISO-3/ISO-4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "pack_id", "content_hash", "venue", "window", "bar_intervals_ms", "decision_bar_ms", "warmup_bars", "markets", "files", "default_lookback", "regime_description", "claim_label", "created_by_version"],
+  "properties": {
+    "schema": {
+      "const": "pack_manifest/v1",
+      "description": "Schema name and major version of this document."
+    },
+    "pack_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$",
+      "description": "Human-readable pack slug, e.g. 'covid-2020'. Operator-side only; never shown to the agent."
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "The pack's version identity: SHA-256 over the JCS bytes of {\"schema\":\"pack_content/v1\",\"files\":[{path,sha256,bytes,records}...]} with entries sorted by path. Referenced by bundle manifests and chain genesis; replay refuses a pack whose recomputed content hash differs (DET-6)."
+    },
+    "venue": {
+      "type": "string",
+      "description": "Venue identifier, 'binance-um' in V1. Deliberately a string, not an enum: venues (later: merchants, payment rails) are data (commerce-extensibility hook)."
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_ts", "end_ts"],
+      "description": "The pack's real-time window. Real UTC epoch-ms here; observations are rebased (see observation/v1).",
+      "properties": {
+        "start_ts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "First bar open, UTC epoch-milliseconds. Also anchors the observation time-rebase offset: offset = largest whole multiple of 604800000 (one week) <= start_ts, recorded in bundle_manifest.time_rebase_offset_ms."
+        },
+        "end_ts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Window end, UTC epoch-milliseconds, exclusive."
+        }
+      }
+    },
+    "bar_intervals_ms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [3600000, 14400000],
+        "description": "Bar duration in milliseconds; V1 ships 1h and/or 4h, nothing shorter."
+      },
+      "description": "All bar durations present as series files in this pack."
+    },
+    "decision_bar_ms": {
+      "enum": [3600000, 14400000],
+      "description": "Bar duration the episode loop steps on: 14400000 (4h, default packs) or 3600000 (1h, stress packs). One decision turn per bar of this size."
+    },
+    "warmup_bars": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Decision bars at window start reserved as lookback context before turn 0; no decisions occur during warmup. Explicit so 'how much history did turn 0 legitimately see' is a stored fact, not an inference."
+    },
+    "markets": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Map: agent-facing market alias (e.g. 'BTC') -> full per-market venue descriptor. The alias keeps LLM payloads small and venue identity out of observations (ISO-3); the descriptor binds it to a venue-qualified instrument. Multi-asset shaped from day one (Scope section 2); V1 packs carry exactly one entry.",
+      "propertyNames": {
+        "pattern": "^[A-Z0-9]{1,12}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/market_descriptor"
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Every series file the pack builder must produce, with role, row schema, expected hash, and upstream provenance. The build-twice byte-identity oracle (DET-5).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "role", "market", "interval_ms", "row_schema", "sha256", "bytes", "records", "upstream"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Pack-relative file path, e.g. 'bars_4h.jsonl'."
+          },
+          "role": {
+            "enum": ["trade", "mark", "index", "funding"],
+            "description": "Which of the three never-conflated price series (or funding) this file is: index prices funding notional, mark drives margin/liquidation/uPnL, trade drives fills (Protocol section 1)."
+          },
+          "market": {
+            "type": "string",
+            "description": "Market alias (a key of .markets) this series belongs to."
+          },
+          "interval_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Bar interval in milliseconds; 0 for funding (event-stamped, not bar-shaped)."
+          },
+          "row_schema": {
+            "type": "string",
+            "description": "Row schema for every line of this JSONL file, e.g. 'bar_row/v1' or 'funding_row/v1'. Declared here once because bulk rows omit per-row schema fields."
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "description": "SHA-256 over the complete uncompressed file bytes as built."
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Uncompressed file size in bytes; lets a verifier detect truncation before hashing."
+          },
+          "records": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Line count of the file."
+          },
+          "upstream": {
+            "type": "array",
+            "description": "Source archives this file was derived from, with Binance-published checksums (DATA-1); bulk repo data.binance.vision only (DATA-4).",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["url", "sha256"],
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "description": "Exact upstream archive URL on data.binance.vision."
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "description": "Upstream .CHECKSUM SHA-256 value, verified before extraction; verification is non-optional."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "default_lookback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bars", "funding_prints"],
+      "description": "Pack-recommended observation lookback depths. Resolution rule: run_config value wins if set, else this default; whichever is effective is recorded in the bundle (bundle_manifest.run_config).",
+      "properties": {
+        "bars": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default number of decision-interval trade bars per observation (V1 default: 64)."
+        },
+        "funding_prints": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Default number of trailing settled funding prints per observation (V1 default: 6 = 2 days at 8h)."
+        }
+      }
+    },
+    "regime_description": {
+      "type": "string",
+      "description": "One-paragraph human description of the market regime. Bundle/report-side ONLY; never serialized into any observation (ISO-3/ISO-4). Its vocabulary seeds the CI observation-scan denylist."
+    },
+    "claim_label": {
+      "const": "survival-stress",
+      "description": "Claim class of any result produced from this pack. Constrained single-member enum in V1 so the LABEL-1 CI assertion is a mechanical equality check; 'skill' is not a member by design. Propagates verbatim into metrics.json and every report/share surface."
+    },
+    "created_by_version": {
+      "type": "string",
+      "description": "tradeevolve package semver that built this pack (pack-build reproducibility audit, DET-5)."
+    },
+    "ext": {
+      "type": "object",
+      "description": "Sanctioned extension point (see VERSIONING.md): engine-ignored, hashed as-is. Keys SHOULD be reverse-DNS or x_-prefixed; values are constrained by schema to JCS-safe types with no fractional numbers ($defs/ext_value).",
+      "additionalProperties": {
+        "$ref": "#/$defs/ext_value"
+      }
+    }
+  },
+  "$defs": {
+    "ext_value": {
+      "description": "JCS-safe extension value (DET-2): null, boolean, string, integer within the I-JSON exact range +/-(2^53-1), or arrays/objects of the same, recursively. A JSON number with a fractional part (e.g. 1.5) is schema-INVALID here - ext contents ride into hashed documents as-is, and no fractional number may enter a hashed document. Boundary note: JSON Schema's 'integer' type admits a mathematically-integral literal such as 1.0; the CI instance scan (float-rejecting JSON parse, see VERSIONING.md) closes that remaining lexical gap.",
+      "anyOf": [
+        {"type": "null", "description": "JSON null."},
+        {"type": "boolean", "description": "JSON boolean."},
+        {"type": "string", "description": "JSON string (decimal values ride as strings, e.g. '0.7')."},
+        {"type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991, "description": "Integer within the I-JSON exact range (JCS round-trips it byte-identically)."},
+        {"type": "array", "items": {"$ref": "#/$defs/ext_value"}, "description": "Array of JCS-safe values."},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/ext_value"}, "description": "Object whose values are all JCS-safe."}
+      ]
+    },
+    "market_descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instrument", "base_asset", "quote_asset", "tick_size_micro", "qty_step_base_1e8", "min_notional_micro", "leverage_cap_lev_1e4", "margin", "funding", "fees", "execution"],
+      "description": "Full venue parameters for one market. Extensibility scope, stated precisely: the CONTAINER pattern (opaque agent-facing alias -> operator-side registry entry) generalizes to other registries (merchants, products, payment rails); the DESCRIPTOR CONTENTS below are perpetual-futures microstructure (margin tiers, funding, fees, execution model) and are required as such - a non-trading vertical (commerce) ships its own descriptor under a new major, reusing the container and `venue` string. ext can ADD fields but cannot remove the required trade blocks.",
+      "properties": {
+        "instrument": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+:[A-Z0-9]+$",
+          "description": "Venue-qualified instrument id, e.g. 'binance-um:BTCUSDT'. The authoritative identity behind the agent-facing alias; bundle/audit-side only."
+        },
+        "base_asset": {
+          "type": "string",
+          "description": "Base asset code; all *_base_1e8 quantities are 1e-8 units of this."
+        },
+        "quote_asset": {
+          "const": "USDT",
+          "description": "Quote/settlement asset all *_micro amounts are denominated in. USDT for V1 (venue-accurate Binance USDT-M; not the protocol doc's USDC). Const in v1; future quote assets are a minor enum extension."
+        },
+        "tick_size_micro": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "One price tick in micro-quote units (BTCUSDT: 100000 = 0.10 USDT). Interprets every *_ticks field for this market."
+        },
+        "qty_step_base_1e8": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Order quantity granularity in 1e-8 base units; fill quantities round toward zero to this step (orders rounding to zero cancel with reason qty_rounding)."
+        },
+        "min_notional_micro": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum order notional in micro-quote; smaller orders cancel with reason min_notional."
+        },
+        "leverage_cap_lev_1e4": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Per-market leverage cap in 1e-4 units (BTC: 30000 = 3x; a future SOL entry: 20000 = 2x). Enforced as a recorded RiskCheck gate, never as parse validation."
+        },
+        "margin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tiers", "liquidation_penalty_1e8"],
+          "description": "Isolated-margin parameters (Protocol section 2).",
+          "properties": {
+            "tiers": {
+              "type": "array",
+              "minItems": 1,
+              "description": "Margin tier table, ascending by notional cap, as explicit stored integers so replay never derives rates from formulas with rounding ambiguity. Pack validator asserts: at the max-leverage tier, maintenance = half initial.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["notional_cap_micro", "initial_rate_1e8", "maintenance_rate_1e8"],
+                "properties": {
+                  "notional_cap_micro": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Upper position-notional bound of this tier in micro-quote; the last tier uses 9007199254740991 (unbounded)."
+                  },
+                  "initial_rate_1e8": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Initial margin rate in 1e-8 units (3x cap tier: 33333334 = ceil(1e8/3), conservative)."
+                  },
+                  "maintenance_rate_1e8": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maintenance margin rate in 1e-8 units; = half the initial rate at the max-leverage tier (data invariant, validator-asserted)."
+                  }
+                }
+              }
+            },
+            "liquidation_penalty_1e8": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Liquidation penalty rate in 1e-8 of liquidated position notional, charged on top of the conservative-side close (MATH-3)."
+            }
+          }
+        },
+        "funding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["interval_ms", "settlement_offsets_ms", "cap_1e8", "floor_1e8"],
+          "description": "Funding parameters. A per-MARKET data block, never a venue constant (MATH-4; Binance runs 4h/1h intervals on some alts).",
+          "properties": {
+            "interval_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Funding interval in milliseconds. V1 BTCUSDT: 28800000 (8h)."
+            },
+            "settlement_offsets_ms": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 86399999,
+                "description": "One settlement time as a millisecond offset from UTC midnight."
+              },
+              "description": "Settlement times as ms offsets from UTC midnight, e.g. [0, 28800000, 57600000] = 00/08/16 UTC. Integer math, no cron parser, era-exact."
+            },
+            "cap_1e8": {
+              "type": "integer",
+              "description": "Era-accurate maximum funding rate in 1e-8 units (2020-era Binance: 300000 = +0.30%)."
+            },
+            "floor_1e8": {
+              "type": "integer",
+              "description": "Era-accurate minimum funding rate in 1e-8 units (2020-era: -300000; the COVID 2020-03-13 08:00 print sits exactly here)."
+            }
+          }
+        },
+        "fees": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maker_rate_1e8", "taker_rate_1e8"],
+          "description": "Era-accurate fee schedule.",
+          "properties": {
+            "maker_rate_1e8": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Maker fee rate in 1e-8 of notional. Recorded for completeness; V1 charges taker on every fill (Protocol section 1)."
+            },
+            "taker_rate_1e8": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Taker fee rate in 1e-8 of notional, applied to every fill, rounded up (agent-adverse rounding)."
+            }
+          }
+        },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["half_spread_1e8", "impact_model", "impact_coeff_1e8", "participation_cap_1e8", "cost_profile_multipliers_1e4"],
+          "description": "Conservative fill-model parameters, recorded in the pack so replay needs no external calibration input.",
+          "properties": {
+            "half_spread_1e8": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Worst-side half-spread as a 1e-8 fraction of price, calibrated on evolution-period data only (calibration window documented in calibration_note, never observable by the agent)."
+            },
+            "impact_model": {
+              "enum": ["linear", "sqrt"],
+              "description": "Price-impact functional form; exact integer arithmetic and per-operation rounding pinned by spec/fill-model.md and the golden fixture (C0.3)."
+            },
+            "impact_coeff_1e8": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Impact coefficient in 1e-8 units, applied to the participation ratio under impact_model."
+            },
+            "participation_cap_1e8": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum fraction of the fill bar's trade volume an order may take, in 1e-8 units. Excess quantity is CANCELLED, never filled (MATH-7)."
+            },
+            "cost_profile_multipliers_1e4": {
+              "type": "object",
+              "description": "Cost profile name -> multiplier applied to all execution costs (spread, fee, impact) in 1e-4 units. V1: {\"primary\": 10000, \"stress_2x\": 20000}. Profiles are pack data so the 2x re-simulation is fully determined by the pack (MATH-5).",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Cost multiplier in 1e-4 units (10000 = 1.0x)."
+              }
+            }
+          }
+        },
+        "calibration_note": {
+          "type": "string",
+          "description": "Optional human documentation of how half_spread/impact were calibrated (window, method). Audit-side only."
+        },
+        "ext": {
+          "type": "object",
+          "description": "Sanctioned extension point (see VERSIONING.md). Engine-ignored, hashed as-is; values are constrained by schema to JCS-safe types with no fractional numbers ($defs/ext_value).",
+          "additionalProperties": {
+            "$ref": "#/$defs/ext_value"
+          }
+        }
+      }
+    }
+  }
+}

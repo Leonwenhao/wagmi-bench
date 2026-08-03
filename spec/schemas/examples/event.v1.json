@@ -1,0 +1,23 @@
+{
+  "schema": "event/v1",
+  "seq": 42,
+  "ts": 1581537600000,
+  "turn": 5,
+  "bar_index": 6,
+  "source": "engine",
+  "type": "OrderFilled",
+  "payload": {
+    "market": "BTC",
+    "side": "sell",
+    "requested_qty_base_1e8": 50000000,
+    "qty_base_1e8": 50000000,
+    "ref_open_px_ticks": 86550,
+    "half_spread_ticks": 44,
+    "impact_ticks": 12,
+    "fill_px_ticks": 86494,
+    "notional_micro": 4324700000,
+    "fee_micro": 1729880,
+    "slippage_1e8": -64703,
+    "cost_profile": "primary"
+  }
+}

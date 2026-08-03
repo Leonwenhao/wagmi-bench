@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/action.v1.schema.json",
+  "title": "action/v1",
+  "description": "The agent's decision for one turn (IC-3): a signed target-position vector plus optional execution tolerance, rationale, and telemetry. This is the WIRE form, tuned for LLM ergonomics: target leverage values are decimal STRINGS (or bare JSON integers), never fractional JSON numbers - a JSON number with a fractional part is rejected with reason float_target, so no float ever enters a money path (DET-2/DET-4). The engine canonicalizes to integer lev_1e4 in ActionParsed; only that canonical form is hashed. Leverage-cap/turnover/kill-switch limits are deliberately NOT validated here: a well-formed over-limit action parses successfully and is then blocked by a recorded RiskCheck gate, preserving attempted-vs-executed evidence (SAFE-1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {"intent_kind": {"const": "leverage_target"}}
+      },
+      "then": {"required": ["target"]}
+    }
+  ],
+  "properties": {
+    "schema": {
+      "const": "action/v1",
+      "description": "Schema name and major version of this document."
+    },
+    "intent_kind": {
+      "enum": ["leverage_target"],
+      "description": "Optional intent discriminator (the IC-3 extensibility seam, applied at the M0 audit). Absence means 'leverage_target' - every v1 trading action is a leverage-target intent, and `target` is conditionally required exactly when intent_kind is 'leverage_target' or absent (the allOf/if/then above; vacuous truth of the if-schema when the member is absent makes absence equivalent to the const). This enum is on the additive-tolerant list (VERSIONING.md): a future non-trading intent kind (e.g. a commerce 'purchase_intent' carrying an AP2-style cart) arrives as a new enum member with its own conditionally-required payload branch - a MINOR bump, not an action/v2 major. The engine canonicalizes the discriminator into the hashed parsed form (ActionParsed.intent_kind, constant 'leverage_target' for every trading action), so determinism is unaffected."
+    },
+    "target": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 16,
+      "description": "Map: market alias (as shown in the observation, e.g. 'BTC') -> signed target leverage on NAV. Sign = direction (negative = short), '0' = flat, magnitude = leverage multiple. Example: {\"BTC\": \"-1.5\"} = short 1.5x NAV. This is the entire action space: target positions, not raw orders.",
+      "propertyNames": {
+        "pattern": "^[A-Z0-9]{1,12}$"
+      },
+      "additionalProperties": {
+        "description": "Target leverage: a decimal string with at most 4 fractional digits (e.g. \"1.5\", \"-0.25\", \"0\") or a bare JSON integer. Parsed EXACTLY (decimal re-parse of the raw text, never via binary float) to an integer in 1e-4 leverage units (\"1.5\" -> 15000). Fractional JSON numbers are schema-invalid by construction.",
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^-?(0|[1-9][0-9]{0,2})(\\.[0-9]{1,4})?$",
+            "description": "Signed decimal string, <= 4 fractional digits, no exponent; NaN/Infinity are unrepresentable by the grammar."
+          },
+          {
+            "type": "integer",
+            "minimum": -999,
+            "maximum": 999,
+            "description": "Whole-number leverage as a JSON integer (integers are exact; only fractional JSON numbers are banned)."
+          }
+        ]
+      }
+    },
+    "max_slippage_bps": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000,
+      "description": "Optional. Maximum acceptable modeled slippage versus the next-bar-open reference price, in integer basis points (agent-facing bps for ergonomics; stored engine-side as slippage_1e8, 1 bp = 10000 in 1e-8 units - exact conversion). Orders whose modeled slippage exceeds this are cancelled with reason max_slippage_exceeded."
+    },
+    "comment": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Optional free-text rationale. Never interpreted by the engine. It is NOT copied into the canonical parsed action: the verbatim response bytes (which contain it) are content-addressed into raw/, keeping rationale redactable under the share profile without touching chained records."
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional self-reported token usage; copied by the harness into AgentResponded.token_usage. Advisory telemetry, never validated, excluded from the canonical parsed action (it is telemetry, not intent).",
+      "properties": {
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Agent-reported input/prompt tokens consumed for this decision."
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Agent-reported output/completion tokens produced for this decision."
+        }
+      }
+    },
+    "ext": {
+      "type": "object",
+      "description": "Sanctioned extension point (see VERSIONING.md): engine-ignored, recorded verbatim in raw/ only (not in canonical parsed form). Keys SHOULD be reverse-DNS or x_-prefixed; values are constrained by schema to JCS-safe types with no fractional numbers ($defs/ext_value).",
+      "additionalProperties": {
+        "$ref": "#/$defs/ext_value"
+      }
+    }
+  },
+  "$defs": {
+    "ext_value": {
+      "description": "JCS-safe extension value (DET-2): null, boolean, string, integer within the I-JSON exact range +/-(2^53-1), or arrays/objects of the same, recursively. A JSON number with a fractional part (e.g. 1.5) is schema-INVALID here - ext contents ride into hashed documents as-is, and no fractional number may enter a hashed document. Boundary note: JSON Schema's 'integer' type admits a mathematically-integral literal such as 1.0; the CI instance scan (float-rejecting JSON parse, see VERSIONING.md) closes that remaining lexical gap.",
+      "anyOf": [
+        {"type": "null", "description": "JSON null."},
+        {"type": "boolean", "description": "JSON boolean."},
+        {"type": "string", "description": "JSON string (decimal values ride as strings, e.g. '0.7')."},
+        {"type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991, "description": "Integer within the I-JSON exact range (JCS round-trips it byte-identically)."},
+        {"type": "array", "items": {"$ref": "#/$defs/ext_value"}, "description": "Array of JCS-safe values."},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/ext_value"}, "description": "Object whose values are all JCS-safe."}
+      ]
+    }
+  }
+}

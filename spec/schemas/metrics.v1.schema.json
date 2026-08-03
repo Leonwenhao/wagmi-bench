@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/schemas/metrics.v1.schema.json",
+  "title": "metrics/v1",
+  "description": "Final metrics of a run, both cost profiles in one document. CI rule (MATH-5, mechanical): the key sets of profiles.primary and profiles.stress_2x are IDENTICAL by schema construction - 'no headline exists only under the optimistic cost profile' becomes a set-equality check. Metric vocabulary is survival-native (LABEL-3): returns AND drawdown/CVaR/distance-to-liquidation percentiles. All ratio metrics are integer fixed-point 1e-8 with floor (toward -infinity) rounding on division, estimator fine print pinned in spec/metrics.md and worked examples in the golden fixture (C0.3); this document is hashed, so the no-floats rule applies. The per-bar equity curve is NOT duplicated here: ledger.jsonl IS the equity curve (one source of truth per number).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "claim_label", "profiles", "profile_invariant"],
+  "properties": {
+    "schema": {
+      "const": "metrics/v1",
+      "description": "Schema name and major version of this document."
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run_[0-9a-f]{16}$",
+      "description": "Run these metrics summarize."
+    },
+    "claim_label": {
+      "const": "survival-stress",
+      "description": "Propagated verbatim from the pack manifest so report/share generators cannot lose it (LABEL-1): scenario evidence is survival/stress evidence, never skill/alpha."
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "stress_2x"],
+      "description": "Per-cost-profile metrics; both profiles mandatory with the identical key set.",
+      "properties": {
+        "primary": {"$ref": "#/$defs/profile_metrics", "description": "Metrics computed under the primary (1x) cost profile (see $defs/profile_metrics)."},
+        "stress_2x": {"$ref": "#/$defs/profile_metrics", "description": "Metrics recomputed under the doubled-cost stress profile (see $defs/profile_metrics)."}
+      }
+    },
+    "profile_invariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bars", "turns", "invalid_actions", "missed_decisions", "gate_blocks", "post_kill_switch_attempts", "egress_blocked_count", "liquidated", "kill_switch_fired", "survival_verdict"],
+      "description": "Counts and verdicts independent of the cost profile.",
+      "properties": {
+        "bars": {"type": "integer", "minimum": 0, "description": "Decision bars simulated."},
+        "turns": {"type": "integer", "minimum": 0, "description": "Decision turns (= decision records)."},
+        "invalid_actions": {"type": "integer", "minimum": 0, "description": "Turns ending in ActionRejected for a parse/validation reason."},
+        "missed_decisions": {"type": "integer", "minimum": 0, "description": "Turns ending in ActionRejected{timeout|agent_error} (SAFE-4)."},
+        "gate_blocks": {"type": "integer", "minimum": 0, "description": "RiskCheck events with verdict 'block'."},
+        "post_kill_switch_attempts": {"type": "integer", "minimum": 0, "description": "PostKillSwitchAttempt events recorded."},
+        "egress_blocked_count": {"type": "integer", "minimum": 0, "description": "EgressBlocked events recorded (sum of coalesced counts)."},
+        "liquidated": {"type": "boolean", "description": "True iff a LiquidationTriggered event occurred (terminal)."},
+        "kill_switch_fired": {"type": "boolean", "description": "True iff the drawdown kill switch fired."},
+        "survival_verdict": {
+          "enum": ["survived", "liquidated", "killed_flat"],
+          "description": "The headline verdict: survived to window end; liquidated (terminal); or kill-switch-flattened and finished flat."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "profile_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["net_return_1e8", "max_drawdown_1e8", "sortino_1e8", "cvar5_1e8", "funding_paid_micro", "fees_paid_micro", "fill_cost_micro", "turnover_1e8", "dist_to_liq_min_1e8", "dist_to_liq_p05_1e8", "dist_to_liq_p25_1e8", "dist_to_liq_median_1e8", "equity_curve_ref"],
+      "description": "One cost profile's metric set. The required list IS the mandatory shared key set (additionalProperties false + identical required = MATH-5 by construction).",
+      "properties": {
+        "net_return_1e8": {"type": "integer", "description": "Net episode return (final NAV / starting NAV - 1) in 1e-8 units, floor rounding."},
+        "max_drawdown_1e8": {"type": "integer", "minimum": 0, "description": "Maximum peak-to-trough NAV drawdown fraction, 1e-8 units."},
+        "sortino_1e8": {"type": "integer", "description": "Sortino ratio in 1e-8 fixed point; estimator and rounding pinned in spec/metrics.md."},
+        "cvar5_1e8": {"type": "integer", "description": "CVaR(5%) of per-bar returns, 1e-8 units (negative = loss)."},
+        "funding_paid_micro": {"type": "integer", "description": "Net funding flow over the episode, micro-quote (negative = paid)."},
+        "fees_paid_micro": {"type": "integer", "maximum": 0, "description": "Total fees paid, micro-quote (always <= 0)."},
+        "fill_cost_micro": {"type": "integer", "maximum": 0, "description": "Total spread+impact execution cost versus reference opens, micro-quote (always <= 0)."},
+        "turnover_1e8": {"type": "integer", "minimum": 0, "description": "Gross traded notional / starting NAV, 1e-8 units."},
+        "dist_to_liq_min_1e8": {"type": ["integer", "null"], "description": "Minimum intra-bar distance-to-liquidation over the episode, 1e-8 units; null if never in position."},
+        "dist_to_liq_p05_1e8": {"type": ["integer", "null"], "description": "5th percentile of bar-close distance-to-liquidation while in position; null if never in position."},
+        "dist_to_liq_p25_1e8": {"type": ["integer", "null"], "description": "25th percentile of bar-close distance-to-liquidation while in position; null if never in position."},
+        "dist_to_liq_median_1e8": {"type": ["integer", "null"], "description": "Median bar-close distance-to-liquidation while in position; null if never in position."},
+        "equity_curve_ref": {"type": "string", "description": "Bundle-relative path of this profile's ledger file (the equity curve): 'ledger.jsonl' or 'ledger_stress_2x.jsonl'."}
+      }
+    }
+  }
+}

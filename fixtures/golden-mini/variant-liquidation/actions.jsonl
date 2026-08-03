@@ -1,0 +1,5 @@
+{"body":"{\"comment\":\"open long 2x\",\"schema\":\"action/v1\",\"target\":{\"BTC\":\"2\"}}","mode":"respond","schema":"scripted_turn/v1","turn":0}
+{"mode":"timeout","schema":"scripted_turn/v1","turn":1}
+{"body":"{\"comment\":\"raise to 2.5x (order sized over the bar-3 participation cap; excess must cancel)\",\"schema\":\"action/v1\",\"target\":{\"BTC\":\"2.5\"}}","mode":"respond","schema":"scripted_turn/v1","turn":2}
+{"mode":"timeout","schema":"scripted_turn/v1","turn":3}
+{"body":"go long 3x now!!","mode":"respond","schema":"scripted_turn/v1","turn":4}

@@ -1,0 +1,46 @@
+{
+  "schema": "episode_config/v1",
+  "starting_nav_micro": 10000000000,
+  "leverage_cap_gross_lev_1e4": 30000,
+  "drawdown_kill_switch_1e8": 20000000,
+  "decision_timeout_ms": 120000,
+  "parse_failure_retries": 1,
+  "cost_profile": "primary",
+  "lookback": {
+    "bars": 4,
+    "funding_prints": 2
+  },
+  "market_params_restated": {
+    "BTC": {
+      "tick_size_micro": 10000,
+      "qty_step_base_1e8": 100000,
+      "min_notional_micro": 10000000,
+      "leverage_cap_lev_1e4": 30000,
+      "initial_rate_1e8": 33333334,
+      "maintenance_rate_1e8": 16666667,
+      "liquidation_penalty_1e8": 1000000,
+      "funding_interval_ms": 14400000,
+      "settlement_offsets_ms": [
+        0,
+        14400000,
+        28800000,
+        43200000,
+        57600000,
+        72000000
+      ],
+      "funding_cap_1e8": 300000,
+      "funding_floor_1e8": -300000,
+      "maker_rate_1e8": 15000,
+      "taker_rate_1e8": 45000,
+      "half_spread_1e8": 50000,
+      "impact_model": "linear",
+      "impact_coeff_1e8": 0,
+      "participation_cap_1e8": 10000000,
+      "cost_profile_multipliers_1e4": {
+        "primary": 10000,
+        "stress_2x": 20000
+      }
+    }
+  },
+  "note": "market_params_restated duplicates pack/manifest.json markets.BTC for hand-check convenience; the pack manifest is authoritative and any divergence is a fixture bug. episode_config schema is fixture-local (no published spec schema yet; formalized by C2)."
+}

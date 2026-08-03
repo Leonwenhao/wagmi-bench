@@ -1,0 +1,49 @@
+name: Feature request
+description: Propose a bounded improvement with compatibility and claim impact.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the evidence or operator problem, not only the proposed API.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Smallest useful change
+    validations:
+      required: true
+  - type: dropdown
+    id: contract
+    attributes:
+      label: Frozen-contract impact
+      options:
+        - None
+        - Documentation-only patch
+        - Additive minor schema change
+        - Breaking major schema change
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Acceptance receipt
+      description: State the deterministic, adversarial, or clean-room test that should prove completion.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope checks
+      options:
+        - label: Historical-result claims will remain labeled survival-stress.
+          required: true
+        - label: The proposal does not require committing or redistributing market data.
+          required: true
+        - label: I reviewed the frozen schema-versioning policy if a public contract may change.
+          required: true

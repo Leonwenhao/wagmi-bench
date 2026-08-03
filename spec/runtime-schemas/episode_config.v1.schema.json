@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeevolve.dev/spec/runtime-schemas/episode_config.v1.schema.json",
+  "title": "episode_config/v1",
+  "description": "Non-frozen, operator-authored episode configuration. The runtime normalizes this document to the frozen bundle_manifest.run_config object before replay evidence is sealed. Legacy golden-fixture spellings remain accepted so the hand-computed M0 oracle is executable without changing its frozen bytes.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "episode_config/v1",
+      "default": "episode_config/v1",
+      "description": "Runtime input schema discriminator. It may be omitted by an in-process caller; authored JSON files should include it."
+    },
+    "starting_nav_micro": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 10000000000,
+      "description": "Starting NAV in micro-quote units."
+    },
+    "leverage_cap_gross_lev_1e4": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 30000,
+      "description": "Account gross-leverage cap in 1e-4 leverage units."
+    },
+    "drawdown_kill_switch_1e8": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 20000000,
+      "description": "Peak-to-current drawdown threshold in 1e-8 ratio units."
+    },
+    "lookback_bars": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "default": null,
+      "description": "Operator bar-lookback override; null uses the pack recommendation."
+    },
+    "funding_prints": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "default": null,
+      "description": "Operator funding-print lookback override; null uses the pack recommendation."
+    },
+    "lookback": {
+      "type": "object",
+      "additionalProperties": false,
+      "deprecated": true,
+      "description": "Legacy golden-fixture spelling. Direct lookback_bars and funding_prints fields take precedence when both forms are present.",
+      "properties": {
+        "bars": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "funding_prints": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "response_deadline_ms": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 120000,
+      "description": "Per-attempt response deadline recorded in the normalized run config."
+    },
+    "decision_timeout_ms": {
+      "type": "integer",
+      "minimum": 1,
+      "deprecated": true,
+      "description": "Legacy alias for response_deadline_ms. The direct response_deadline_ms field takes precedence."
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Recorded deterministic seed. The V1 engine consumes no randomness."
+    },
+    "cost_profiles": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "default": ["primary", "stress_2x"],
+      "description": "Profiles to simulate. V1 requires primary and stress_2x; additional pack-declared profiles remain an input-level extension but are not accepted by the current V1 runner.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "primary"
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "const": "stress_2x"
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
+    "cost_profile": {
+      "enum": ["primary", "stress_2x"],
+      "deprecated": true,
+      "description": "Legacy fixture inspection selector. Either valid value normalizes to both mandatory V1 profiles."
+    },
+    "turnover_cap_1e8": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "default": null,
+      "description": "Cumulative turnover cap in 1e-8 ratio units; null disables the gate."
+    },
+    "parse_failure_retries": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 1,
+      "description": "Harness retry count. V1 executes at most the first retry; this field is intentionally absent from the frozen replay run_config."
+    },
+    "market_params_restated": {
+      "type": "object",
+      "deprecated": true,
+      "description": "Golden-fixture-only hand-check aid. The pack manifest is authoritative and the runtime ignores this object."
+    },
+    "note": {
+      "type": "string",
+      "deprecated": true,
+      "description": "Golden-fixture-only human note ignored by the runtime."
+    }
+  }
+}

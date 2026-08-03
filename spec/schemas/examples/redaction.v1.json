@@ -1,0 +1,20 @@
+{
+  "schema": "redaction/v1",
+  "run_id": "run_7d3f0a1b2c4d5e6f",
+  "profile": "share",
+  "parent_root": "sha256:0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+  "removals": [
+    {
+      "path": "raw/0005-a1.txt",
+      "sha256": "sha256:bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22bb22",
+      "bytes": 412,
+      "reason": "raw_model_text"
+    },
+    {
+      "path": "raw/0006-a1.txt",
+      "sha256": "sha256:1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b",
+      "bytes": 388,
+      "reason": "raw_model_text"
+    }
+  ]
+}

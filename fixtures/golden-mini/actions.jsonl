@@ -1,0 +1,13 @@
+{"body":"{\"comment\":\"open long 2x\",\"schema\":\"action/v1\",\"target\":{\"BTC\":\"2\"}}","mode":"respond","schema":"scripted_turn/v1","turn":0}
+{"mode":"timeout","schema":"scripted_turn/v1","turn":1}
+{"body":"{\"comment\":\"raise to 2.5x (order sized over the bar-3 participation cap; excess must cancel)\",\"schema\":\"action/v1\",\"target\":{\"BTC\":\"2.5\"}}","mode":"respond","schema":"scripted_turn/v1","turn":2}
+{"mode":"timeout","schema":"scripted_turn/v1","turn":3}
+{"body":"go long 3x now!!","mode":"respond","schema":"scripted_turn/v1","turn":4}
+{"mode":"timeout","schema":"scripted_turn/v1","turn":5}
+{"body":"{\"comment\":\"de-risk to 1x after the near-liquidation wick\",\"schema\":\"action/v1\",\"target\":{\"BTC\":\"1\"}}","mode":"respond","schema":"scripted_turn/v1","turn":6}
+{"mode":"timeout","schema":"scripted_turn/v1","turn":7}
+{"body":"{\"comment\":\"flip short 1.5x\",\"schema\":\"action/v1\",\"target\":{\"BTC\":\"-1.5\"}}","mode":"respond","schema":"scripted_turn/v1","turn":8}
+{"mode":"timeout","schema":"scripted_turn/v1","turn":9}
+{"body":"{\"comment\":\"ask for 4x; expect RiskCheck gate block, position unchanged\",\"schema\":\"action/v1\",\"target\":{\"BTC\":\"4\"}}","mode":"respond","schema":"scripted_turn/v1","turn":10}
+{"mode":"timeout","schema":"scripted_turn/v1","turn":11}
+{"body":"{\"comment\":\"close flat\",\"schema\":\"action/v1\",\"target\":{\"BTC\":\"0\"}}","mode":"respond","schema":"scripted_turn/v1","turn":12}

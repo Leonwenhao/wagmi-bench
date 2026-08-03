@@ -1,0 +1,70 @@
+name: Bug report
+description: Report a reproducible defect without secrets or market data.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include credentials, raw market data, model-response secrets, or private evidence. Use the private security path in SECURITY.md for sandbox escapes, secret exposure, tamper bypasses, or path traversal.
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or version
+      description: Exact Git commit or installed package version.
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - spec/schema
+        - data/pack
+        - core engine/math
+        - harness/adapter
+        - recorder/verifier/replay
+        - sandbox/egress
+        - report/share card
+        - CLI
+        - documentation
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal synthetic reproduction
+      description: Commands and synthetic inputs only. Use fresh output paths.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected invariant or behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: Include exit code and first verifier path/stream/sequence when relevant.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: OS, architecture, Python, Docker server, and filesystem where relevant.
+    validations:
+      required: true
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Submission hygiene
+      options:
+        - label: I removed credentials, raw market data, private model text, and identifying evidence.
+          required: true
+        - label: I reproduced on an unmodified copy and preserved the original evidence.
+          required: false
